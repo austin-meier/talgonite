@@ -440,14 +440,16 @@ pub fn apply_core_to_slint(
                             .unwrap_or("#d0d0d0");
                         let color = parse_color_hex(color_str);
 
+                        let rich_text = crate::rich_text::RichText::parse(entry.text.as_str());
                         chat_messages.push(crate::ChatMessage {
-                            text: slint::SharedString::from(entry.text.as_str()),
+                            text: rich_text.to_slint_styled_text(),
                             color,
                         });
                     }
 
                     if entry.show_in_action_bar {
-                        action_bar_messages.push(slint::SharedString::from(entry.text.as_str()));
+                        let rich_text = crate::rich_text::RichText::parse(entry.text.as_str());
+                        action_bar_messages.push(slint::SharedString::from(rich_text.to_plain_string().as_str()));
                         while action_bar_messages.len() > 4 {
                             action_bar_messages.remove(0);
                         }
@@ -911,16 +913,24 @@ pub fn sync_world_labels_to_slint(
                     hp_assigned = true;
                 }
 
+                let text = if label.is_speech {
+                    crate::rich_text::RichText::parse(label.text.as_str()).to_slint_styled_text()
+                } else {
+                    i_slint_core::styled_text::string_to_styled_text(label.text.clone())
+                };
+
                 slint_labels.push(crate::WorldLabel {
                     entity_id: entity.index().index() as i32,
-                    text: slint::SharedString::from(label.text.as_str()),
+                    text,
                     world_x: world_pos.x,
                     world_y: world_pos.y,
                     y_offset: label.y_offset,
-                    color_r: label.color.x,
-                    color_g: label.color.y,
-                    color_b: label.color.z,
-                    color_a: label.color.w,
+                    color: slint::Color::from_argb_f32(
+                        label.color.w,
+                        label.color.x,
+                        label.color.y,
+                        label.color.z,
+                    ).into(),
                     is_speech: label.is_speech,
                     health_percent: final_hp,
                 });
@@ -941,14 +951,11 @@ pub fn sync_world_labels_to_slint(
         if !hp_assigned && hp >= 0 {
             slint_labels.push(crate::WorldLabel {
                 entity_id: entity.index().index() as i32,
-                text: slint::SharedString::default(),
+                text: Default::default(),
                 world_x: world_pos.x,
                 world_y: world_pos.y,
                 y_offset: -40.0,
-                color_r: 1.0,
-                color_g: 1.0,
-                color_b: 1.0,
-                color_a: 1.0,
+                color: slint::Color::from_argb_f32(1.0, 1.0, 1.0, 1.0).into(),
                 is_speech: false,
                 health_percent: hp,
             });

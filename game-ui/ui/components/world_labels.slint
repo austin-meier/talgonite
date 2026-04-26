@@ -46,25 +46,15 @@ component LabelItem inherits Rectangle {
             background: label.health_percent > 50 ? #2ecc71 : (label.health_percent > 25 ? #f1c40f : #e74c3c);
         }
     }
-    txt := Text {
+    
+    txt := StyledText {
         x: label_padding;
         y: label_padding;
-        width: self.preferred-width;
+        width: label.is_speech ? min(self.preferred-width, max_text_width) : self.preferred-width;
         text: label.text;
-        color: rgba(label.color_r * 255, label.color_g * 255, label.color_b * 255, label.color_a);
-        font-size: 11px;
-        font-weight: 600;
+        default-color: label.color;
+        default-font-size: 11px;
         horizontal-alignment: center;
-        states [
-            speech when label.is_speech: {
-                wrap: word-wrap;
-                width: min(self.preferred-width, max_text_width);
-            }
-            non-speech when !label.is_speech: {
-                stroke: #00000080;
-                stroke-width: 2px;
-            }
-        ]
     }
 
     states [

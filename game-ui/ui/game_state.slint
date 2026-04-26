@@ -94,14 +94,11 @@ export global DragDropState {
 
 export struct WorldLabel {
     entity_id: int,
-    text: string,
+    text: styled-text,
     world_x: float,
     world_y: float,
     y_offset: float,
-    color_r: float,
-    color_g: float,
-    color_b: float,
-    color_a: float,
+    color: brush,
     is_speech: bool,
     health_percent: int,
 }
@@ -128,7 +125,7 @@ export struct NpcDialogData {
 }
 
 export struct ChatMessage {
-    text: string,
+    text: styled-text,
     color: brush,
 }
 

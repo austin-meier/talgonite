@@ -5,7 +5,7 @@ pub use game_ui::slint_types::{
     EquipmentSlotData, GameState, GroupInviteNotification, GroupMember, HotbarEntry,
     InputBridge, InstallerState, InventoryItem, LegendMarkData, LobbyState, LoginBridge,
     LoginState, MainWindow, MenuEntry, NpcDialogData, NpcDialogState, PlatformState,
-    ProfileData, SavedLoginItem, ServerItem, SettingsState, Skill, SlotPanelType, Spell,
+    ProfileData, SavedLoginItem, ServerItem, SettingsState, Skill, SlotPanelType, SpeechBubble, Spell,
     WorldLabel, WorldListMemberUi, WorldMapNode,
 };
 

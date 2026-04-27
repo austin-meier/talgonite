@@ -169,6 +169,7 @@ fn reset_game_state_for_main_menu(window: &crate::MainWindow) {
     sync_responsive_state(&game_state, (0, 0));
 
     game_state.set_world_labels(empty_model());
+    game_state.set_speech_bubbles(empty_model());
     game_state.set_chat_messages(empty_model());
     game_state.set_action_bar_messages(empty_model());
     game_state.set_action_bar_update_counter(0);
@@ -897,6 +898,7 @@ pub fn sync_world_labels_to_slint(
 
     // Collect all label types from all entities
     let mut slint_labels: Vec<crate::WorldLabel> = Vec::new();
+    let mut slint_speech_bubbles: Vec<crate::SpeechBubble> = Vec::new();
     for (entity, pos, hover_label, speech_bubble, chant_label, health_bar) in entities_query.iter()
     {
         let world_pos = rendering::scene::get_isometric_coordinate(pos.x, pos.y);
@@ -905,47 +907,49 @@ pub fn sync_world_labels_to_slint(
 
         // Helper to push a label and assign HP once per entity
         let mut push_v_label =
-            |label: crate::ecs::components::WorldLabel,
-             slint_labels: &mut Vec<crate::WorldLabel>| {
+            |label: crate::ecs::components::WorldLabel| {
                 let mut final_hp = -1;
                 if !hp_assigned && hp >= 0 {
                     final_hp = hp;
                     hp_assigned = true;
                 }
 
-                let text = if label.is_speech {
-                    crate::rich_text::RichText::parse(label.text.as_str()).to_slint_styled_text()
+                if label.is_speech {
+                    slint_speech_bubbles.push(crate::SpeechBubble {
+                        entity_id: entity.index().index() as i32,
+                        text: crate::rich_text::RichText::parse(label.text.as_str()).to_slint_styled_text(),
+                        world_x: world_pos.x,
+                        world_y: world_pos.y,
+                        y_offset: label.y_offset,
+                    });
                 } else {
-                    i_slint_core::styled_text::string_to_styled_text(label.text.clone())
-                };
-
-                slint_labels.push(crate::WorldLabel {
-                    entity_id: entity.index().index() as i32,
-                    text,
-                    world_x: world_pos.x,
-                    world_y: world_pos.y,
-                    y_offset: label.y_offset,
-                    color: slint::Color::from_argb_f32(
-                        label.color.w,
-                        label.color.x,
-                        label.color.y,
-                        label.color.z,
-                    ).into(),
-                    is_speech: label.is_speech,
-                    health_percent: final_hp,
-                });
+                    slint_labels.push(crate::WorldLabel {
+                        entity_id: entity.index().index() as i32,
+                        text: slint::SharedString::from(label.text.as_str()),
+                        world_x: world_pos.x,
+                        world_y: world_pos.y,
+                        y_offset: label.y_offset,
+                        color: slint::Color::from_argb_f32(
+                            label.color.w,
+                            label.color.x,
+                            label.color.y,
+                            label.color.z,
+                        ).into(),
+                        health_percent: final_hp,
+                    });
+                }
             };
 
         if let Some(hover) = hover_label {
-            push_v_label(hover.to_world_label(), &mut slint_labels);
+            push_v_label(hover.to_world_label());
         }
 
         if let Some(bubble) = speech_bubble {
-            push_v_label(bubble.to_world_label(), &mut slint_labels);
+            push_v_label(bubble.to_world_label());
         }
 
         if let Some(chant) = chant_label {
-            push_v_label(chant.to_world_label(), &mut slint_labels);
+            push_v_label(chant.to_world_label());
         }
 
         if !hp_assigned && hp >= 0 {
@@ -956,7 +960,6 @@ pub fn sync_world_labels_to_slint(
                 world_y: world_pos.y,
                 y_offset: -40.0,
                 color: slint::Color::from_argb_f32(1.0, 1.0, 1.0, 1.0).into(),
-                is_speech: false,
                 health_percent: hp,
             });
         }
@@ -964,6 +967,8 @@ pub fn sync_world_labels_to_slint(
 
     let model = slint::VecModel::from(slint_labels);
     game_state.set_world_labels(slint::ModelRc::new(model));
+    let bubble_model = slint::VecModel::from(slint_speech_bubbles);
+    game_state.set_speech_bubbles(slint::ModelRc::new(bubble_model));
 }
 
 pub fn sync_map_name_to_slint(

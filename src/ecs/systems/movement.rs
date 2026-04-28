@@ -25,6 +25,7 @@ pub fn player_movement_system(
             &mut Position,
             &mut Direction,
             &mut UnconfirmedWalks,
+            &mut UnconfirmedTurns,
             Option<&MovementTween>,
         ),
         With<LocalPlayer>,
@@ -38,7 +39,7 @@ pub fn player_movement_system(
     map_collision: Option<Res<MapCollisionData>>,
     outbox: Option<Res<crate::network::PacketOutbox>>,
 ) {
-    let Ok((entity, mut position, mut facing, mut unconfirmed, tween)) = player_query.single_mut()
+    let Ok((entity, mut position, mut facing, mut unconfirmed, mut unconfirmed_turns, tween)) = player_query.single_mut()
     else {
         return;
     };
@@ -82,6 +83,13 @@ pub fn player_movement_system(
                 direction,
                 source: _,
             } => {
+                if *facing != *direction {
+                    *facing = *direction;
+                }
+                unconfirmed_turns.pending.push_back(UnconfirmedTurn {
+                    direction: *direction,
+                });
+
                 if let Some(outbox) = &outbox {
                     outbox.send(&client::Turn {
                         direction: (*direction).into(),
@@ -453,15 +461,18 @@ pub fn player_reconciliation_system(
     mut player_query: Query<
         (
             Entity,
+            &EntityId,
             &mut Position,
+            &mut Direction,
             &mut UnconfirmedWalks,
+            &mut UnconfirmedTurns,
             Option<&mut MovementTween>,
         ),
         With<LocalPlayer>,
     >,
     mut commands: Commands,
 ) {
-    let Ok((entity, mut position, mut unconfirmed, mut active_tween)) = player_query.single_mut()
+    let Ok((entity, entity_id, mut position, mut direction, mut unconfirmed, mut unconfirmed_turns, mut active_tween)) = player_query.single_mut()
     else {
         return;
     };
@@ -471,6 +482,7 @@ pub fn player_reconciliation_system(
         if let crate::events::MapEvent::Clear = event {
             unconfirmed.pending.clear();
             unconfirmed.recent_deltas.clear();
+            unconfirmed_turns.pending.clear();
         }
     }
 
@@ -481,6 +493,7 @@ pub fn player_reconciliation_system(
                 position.y = location.y as f32;
                 unconfirmed.pending.clear();
                 unconfirmed.recent_deltas.clear();
+                unconfirmed_turns.pending.clear();
                 commands.entity(entity).remove::<MovementTween>();
             }
             EntityEvent::PlayerWalkResponse(response) => {
@@ -557,6 +570,17 @@ pub fn player_reconciliation_system(
 
                     if unconfirmed.pending.is_empty() {
                         commands.entity(entity).remove::<MovementTween>();
+                    }
+                }
+            }
+            EntityEvent::Turn(turn) => {
+                if turn.source_id == entity_id.id {
+                    let new_dir = Direction::from(turn.direction);
+                    let predicted = unconfirmed_turns.pending.pop_front();
+
+                    if predicted.map(|p| p.direction) != Some(new_dir) {
+                        *direction = new_dir;
+                        unconfirmed_turns.pending.clear();
                     }
                 }
             }

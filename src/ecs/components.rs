@@ -148,6 +148,16 @@ pub struct UnconfirmedWalks {
     pub recent_deltas: VecDeque<Vec2>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct UnconfirmedTurn {
+    pub direction: Direction,
+}
+
+#[derive(Component, Default)]
+pub struct UnconfirmedTurns {
+    pub pending: VecDeque<UnconfirmedTurn>,
+}
+
 #[derive(Component)]
 pub struct LocalPlayer;
 

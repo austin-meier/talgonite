@@ -464,6 +464,7 @@ fn handle_ui_inbound_ingame(
                 check_conflict!(settings);
                 check_conflict!(refresh);
                 check_conflict!(basic_attack);
+                check_conflict!(auto_attack_toggle);
                 check_conflict!(hotbar_slot_1);
                 check_conflict!(hotbar_slot_2);
                 check_conflict!(hotbar_slot_3);
@@ -501,6 +502,7 @@ fn handle_ui_inbound_ingame(
                 set_field!(settings);
                 set_field!(refresh);
                 set_field!(basic_attack);
+                set_field!(auto_attack_toggle);
                 set_field!(hotbar_slot_1);
                 set_field!(hotbar_slot_2);
                 set_field!(hotbar_slot_3);
@@ -546,6 +548,7 @@ fn handle_ui_inbound_ingame(
                 clear_field!(settings);
                 clear_field!(refresh);
                 clear_field!(basic_attack);
+                clear_field!(auto_attack_toggle);
                 clear_field!(hotbar_slot_1);
                 clear_field!(hotbar_slot_2);
                 clear_field!(hotbar_slot_3);
@@ -1136,6 +1139,7 @@ fn handle_ui_inbound_login(
                 check_conflict!(settings);
                 check_conflict!(refresh);
                 check_conflict!(basic_attack);
+                check_conflict!(auto_attack_toggle);
                 check_conflict!(hotbar_slot_1);
                 check_conflict!(hotbar_slot_2);
                 check_conflict!(hotbar_slot_3);
@@ -1173,6 +1177,7 @@ fn handle_ui_inbound_login(
                 set_field!(settings);
                 set_field!(refresh);
                 set_field!(basic_attack);
+                set_field!(auto_attack_toggle);
                 set_field!(hotbar_slot_1);
                 set_field!(hotbar_slot_2);
                 set_field!(hotbar_slot_3);
@@ -1218,6 +1223,7 @@ fn handle_ui_inbound_login(
                 clear_field!(settings);
                 clear_field!(refresh);
                 clear_field!(basic_attack);
+                clear_field!(auto_attack_toggle);
                 clear_field!(hotbar_slot_1);
                 clear_field!(hotbar_slot_2);
                 clear_field!(hotbar_slot_3);

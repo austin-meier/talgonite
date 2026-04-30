@@ -1,9 +1,19 @@
-import { GameState, ProfileData, EquipmentSlotData, SocialStatusState, SocialStatus } from "../game_state.slint";
+import {
+    GameState,
+    ProfileData,
+    EquipmentSlotData,
+    SocialStatusState,
+    SocialStatus,
+} from "../game_state.slint";
 import { Theme } from "../theme.slint";
 import { ScrollView, VerticalBox, HorizontalBox } from "std-widgets.slint";
 import { Icon } from "icon.slint";
 import { BasePanel } from "base_panel.slint";
-import { SocialStatusDropdown, SocialStatusDropdownOverlay, SocialStatusIndicator } from "social_status_panel.slint";
+import {
+    SocialStatusDropdown,
+    SocialStatusDropdownOverlay,
+    SocialStatusIndicator,
+} from "social_status_panel.slint";
 import { PlatformState } from "../platform_state.slint";
 
 import "../../fonts/JetBrainsMono[wght].ttf";
@@ -152,7 +162,7 @@ export component ProfilePanel inherits Rectangle {
                 HorizontalLayout {
                     spacing: 8px;
                     alignment: center;
-                    
+
                     // Column 1: Far Left
                     VerticalLayout {
                         spacing: 4px;
@@ -209,7 +219,7 @@ export component ProfilePanel inherits Rectangle {
                     VerticalLayout {
                         spacing: 8px;
                         alignment: center;
-                        
+
                         // Helmets on top
                         HorizontalLayout {
                             spacing: 4px;
@@ -250,9 +260,9 @@ export component ProfilePanel inherits Rectangle {
                             border-radius: 4px;
                             x: (parent.width - self.width) / 2;
                             Text {
-                                text: data.is-afk ? "Away" : "Online";
+                                text: "Online";
                                 font-size: 9px;
-                                color: data.is-afk ? #6b7280 : #22c55e;
+                                color: #22c55e;
                                 horizontal-alignment: center;
                                 vertical-alignment: center;
                             }
@@ -292,14 +302,14 @@ export component ProfilePanel inherits Rectangle {
                             is-self: data.is-self;
                         }
 
-                // Status indicator below preview
-                status-indicator := SocialStatusIndicator {
-                    x: 77px; // Centered under preview (80px + 114px/2 - 120px/2)
-                    y: 238px;
-                    interactive: data.is-self;
-                    status: data.is-self ? SocialStatusState.current-status : data.social-status;
-                    dropdown-open <=> root.status-dropdown-open;
-                }
+                        // Status indicator below preview
+                        status-indicator := SocialStatusIndicator {
+                            x: 77px; // Centered under preview (80px + 114px/2 - 120px/2)
+                            interactive: data.is-self;
+                            status: data.is-self ? SocialStatusState.current-status : data.social-status;
+                            dropdown-open <=> root.status-dropdown-open;
+                        }
+
                         eq11 := EquipmentSlot {
                             slot-data: data.eq-right-gauntlet;
                             slot-id: 10;
@@ -588,7 +598,7 @@ export component ProfilePanel inherits Rectangle {
                 }
             }
         }
-        
+
         // Social Status Dropdown - placed outside clipped area but inside BasePanel
         // so it can overflow the content area if needed
         SocialStatusDropdownOverlay {
@@ -596,7 +606,7 @@ export component ProfilePanel inherits Rectangle {
             height: 100%;
             open <=> root.status-dropdown-open;
         }
-        
+
         SocialStatusDropdown {
             // Positioned relative to the indicator: x: 77px
             // y: 238px + 48px (BasePanel header)

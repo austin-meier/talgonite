@@ -119,6 +119,9 @@ pub enum UiToCore {
     SetWorldListFilter {
         filter: WorldListFilter,
     },
+    SetSocialStatus {
+        status: u8,
+    },
     ToggleGroupable,
     SendGroupInvite {
         name: String,
@@ -362,6 +365,7 @@ pub struct WorldListMemberUi {
     pub class: String,
     pub color: [f32; 4],
     pub is_master: bool,
+    pub social_status: u8,
 }
 
 #[derive(Debug, Clone, Default)]

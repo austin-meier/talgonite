@@ -13,6 +13,12 @@ pub struct HotbarData {
     pub bars: CustomHotBars,
     #[serde(default)]
     pub current_panel: i32,
+    #[serde(default = "default_hotbar_row_count")]
+    pub row_count: i32,
+}
+
+fn default_hotbar_row_count() -> i32 {
+    1
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -112,6 +118,19 @@ impl Settings {
     pub fn set_current_hotbar_panel(&mut self, server_id: u32, username: &str, panel: i32) {
         let key = format!("{}:{}", server_id, username);
         self.hotbars.entry(key).or_default().current_panel = panel;
+    }
+
+    pub fn get_hotbar_row_count(&self, server_id: u32, username: &str) -> i32 {
+        let key = format!("{}:{}", server_id, username);
+        self.hotbars
+            .get(&key)
+            .map(|data| data.row_count)
+            .unwrap_or_else(default_hotbar_row_count)
+    }
+
+    pub fn set_hotbar_row_count(&mut self, server_id: u32, username: &str, row_count: i32) {
+        let key = format!("{}:{}", server_id, username);
+        self.hotbars.entry(key).or_default().row_count = row_count;
     }
 
     pub fn to_sync_message(&self) -> CoreToUi {

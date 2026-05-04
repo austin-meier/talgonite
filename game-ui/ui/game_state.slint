@@ -281,6 +281,7 @@ export global GameState {
         group-requests-enabled: true,
     };
     in-out property <int> current-hotbar-panel: 0;
+    in-out property <int> hotbar-row-count: 1;
     in-out property <bool> show-group: false;
     in-out property <bool> is-groupable: false;
     in-out property <bool> is-group-leader: false;
@@ -288,6 +289,8 @@ export global GameState {
     in-out property <GroupInviteNotification> group-invite: { visible: false, source-name: "", group-name: "", group-note: "" };
     callback world-map-click(int, int, int, int);
     callback set-hotbar-panel(int);
+    callback expand-hotbar();
+    callback collapse-hotbar();
     callback send-chat(string);
     callback send-whisper(string, string);
     callback unequip(int);

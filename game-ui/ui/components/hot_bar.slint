@@ -57,7 +57,7 @@ component HotBarSlotView inherits Rectangle {
             }
         ]
     }
-    if key-num <= 12 && !PlatformState.is-android: Text {
+    if key-num >= 0 && key-num <= 11 && !PlatformState.is-android: Text {
         text: key-num < 9 ? key-num + 1 : (key-num == 9 ? "0" : (key-num == 10 ? "-" : "="));
         font-size: 9px;
         color: #808080;
@@ -101,6 +101,62 @@ component HotBarSlotView inherits Rectangle {
             background: Theme.surface-secondary;
         }
     ]
+}
+
+component HotBarArrowButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback activated();
+    width: 18px;
+    height: 20px;
+    background: touch.pressed && enabled ? #505050cc : touch.has-hover && enabled ? #404040a0 : #25252570;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: enabled ? #60606080 : #30303040;
+
+    Text {
+        text: label;
+        color: enabled ? Theme.foreground-strong : #606060;
+        font-size: 11px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+
+    touch := TouchArea {
+        mouse-cursor: enabled ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            if enabled {
+                root.activated();
+            }
+        }
+    }
+}
+
+component HotBarSelectorButton inherits Rectangle {
+    in property <bool> selected: false;
+    in property <length> button-height: 6px;
+    callback activated();
+    width: 16px;
+    height: button-height;
+    background: {
+        if selected {
+            @linear-gradient(90deg, #FFC040 0%, #FF8040 100%)
+        } else if touch.has-hover {
+            #40404080
+        } else {
+            #30303060
+        }
+    };
+    border-radius: button-height > 10px ? 3px : 2px;
+    border-width: 1px;
+    border-color: selected ? #FFD06060 : #20202040;
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            root.activated();
+        }
+    }
 }
 
 component InventorySlots inherits GridLayout {
@@ -158,9 +214,186 @@ component CustomHotBarSlots inherits GridLayout {
     }
 }
 
+component DesktopInventorySlotsOne inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 12: HotBarSlotView {
+        row: 0;
+        key-num: idx;
+        panel-type: SlotPanelType.item;
+        slot: GameState.inventory[idx].slot;
+        quantity: GameState.inventory[idx].quantity;
+        icon: GameState.inventory[idx].icon;
+        name: GameState.inventory[idx].name;
+    }
+}
+
+component DesktopInventorySlotsThree inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 36: HotBarSlotView {
+        row: idx / 12;
+        key-num: idx;
+        panel-type: SlotPanelType.item;
+        slot: GameState.inventory[idx].slot;
+        quantity: GameState.inventory[idx].quantity;
+        icon: GameState.inventory[idx].icon;
+        name: GameState.inventory[idx].name;
+    }
+}
+
+component DesktopInventorySlotsFive inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 60: HotBarSlotView {
+        row: idx / 12;
+        key-num: idx;
+        panel-type: SlotPanelType.item;
+        slot: GameState.inventory[idx].slot;
+        quantity: GameState.inventory[idx].quantity;
+        icon: GameState.inventory[idx].icon;
+        name: GameState.inventory[idx].name;
+    }
+}
+
+component DesktopSpellSlotsOne inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 12: HotBarSlotView {
+        row: 0;
+        key-num: idx;
+        panel-type: SlotPanelType.spell;
+        slot: GameState.spells[idx].slot;
+        icon: GameState.spells[idx].icon;
+        name: GameState.spells[idx].name;
+    }
+}
+
+component DesktopSpellSlotsThree inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 36: HotBarSlotView {
+        row: idx / 12;
+        key-num: idx;
+        panel-type: SlotPanelType.spell;
+        slot: GameState.spells[idx].slot;
+        icon: GameState.spells[idx].icon;
+        name: GameState.spells[idx].name;
+    }
+}
+
+component DesktopSpellSlotsFive inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 60: HotBarSlotView {
+        row: idx / 12;
+        key-num: idx;
+        panel-type: SlotPanelType.spell;
+        slot: GameState.spells[idx].slot;
+        icon: GameState.spells[idx].icon;
+        name: GameState.spells[idx].name;
+    }
+}
+
+component DesktopSkillSlotsOne inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 12: HotBarSlotView {
+        row: 0;
+        key-num: idx;
+        panel-type: SlotPanelType.skill;
+        slot: GameState.skills[idx].slot;
+        icon: GameState.skills[idx].icon;
+        name: GameState.skills[idx].name;
+        cooldown-left: GameState.skills[idx].cooldown.time_left;
+        cooldown-total: GameState.skills[idx].cooldown.total;
+    }
+}
+
+component DesktopSkillSlotsThree inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 36: HotBarSlotView {
+        row: idx / 12;
+        key-num: idx;
+        panel-type: SlotPanelType.skill;
+        slot: GameState.skills[idx].slot;
+        icon: GameState.skills[idx].icon;
+        name: GameState.skills[idx].name;
+        cooldown-left: GameState.skills[idx].cooldown.time_left;
+        cooldown-total: GameState.skills[idx].cooldown.total;
+    }
+}
+
+component DesktopSkillSlotsFive inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 60: HotBarSlotView {
+        row: idx / 12;
+        key-num: idx;
+        panel-type: SlotPanelType.skill;
+        slot: GameState.skills[idx].slot;
+        icon: GameState.skills[idx].icon;
+        name: GameState.skills[idx].name;
+        cooldown-left: GameState.skills[idx].cooldown.time_left;
+        cooldown-total: GameState.skills[idx].cooldown.total;
+    }
+}
+
+component DesktopCollapsedCustomHotBarSlots inherits GridLayout {
+    in property <int> offset: 0;
+    spacing: 4px;
+
+    for idx in 12: HotBarSlotView {
+        row: 0;
+        key-num: idx;
+        panel-type: SlotPanelType.hotbar;
+        slot: offset + idx;
+        icon: GameState.hotbar[offset + idx].icon;
+        name: GameState.hotbar[offset + idx].name;
+        quantity: GameState.hotbar[offset + idx].quantity;
+        cooldown-left: GameState.hotbar[offset + idx].cooldown.time_left;
+        cooldown-total: GameState.hotbar[offset + idx].cooldown.total;
+    }
+}
+
+component DesktopExpandedCustomHotBarSlotsThree inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 36: HotBarSlotView {
+        row: idx / 12;
+        key-num: idx < 12 ? Math.mod(idx, 12) : -1;
+        panel-type: SlotPanelType.hotbar;
+        slot: idx;
+        icon: GameState.hotbar[idx].icon;
+        name: GameState.hotbar[idx].name;
+        quantity: GameState.hotbar[idx].quantity;
+        cooldown-left: GameState.hotbar[idx].cooldown.time_left;
+        cooldown-total: GameState.hotbar[idx].cooldown.total;
+    }
+}
+
+component DesktopExpandedCustomHotBarSlotsFive inherits GridLayout {
+    spacing: 4px;
+
+    for idx in 60: HotBarSlotView {
+        row: idx / 12;
+        key-num: idx < 12 ? Math.mod(idx, 12) : -1;
+        panel-type: SlotPanelType.hotbar;
+        slot: idx;
+        icon: GameState.hotbar[idx].icon;
+        name: GameState.hotbar[idx].name;
+        quantity: GameState.hotbar[idx].quantity;
+        cooldown-left: GameState.hotbar[idx].cooldown.time_left;
+        cooldown-total: GameState.hotbar[idx].cooldown.total;
+    }
+}
+
 export component HotBar inherits Rectangle {
-    width: PlatformState.is-android ? 316px : 596px;
-    height: PlatformState.is-android ? 104px : 50px;
+    property <bool> desktop-expanded: GameState.hotbar-row-count > 1;
+    property <int> desktop-row-count: GameState.hotbar-row-count == 5 ? 5 : (GameState.hotbar-row-count == 3 ? 3 : 1);
+    width: PlatformState.is-android ? 316px : 632px;
+    height: PlatformState.is-android ? 104px : (desktop-row-count == 1 ? 56px : (desktop-row-count == 3 ? 152px : 248px));
 
     // Subtle fading background
     Rectangle {
@@ -170,7 +403,7 @@ export component HotBar inherits Rectangle {
 
     CancelDrag { }
 
-    HorizontalBox {
+    if PlatformState.is-android: HorizontalBox {
         padding: 6px;
         spacing: 4px;
 
@@ -178,26 +411,11 @@ export component HotBar inherits Rectangle {
         VerticalLayout {
             spacing: PlatformState.is-android ? 2px : 1px;
             alignment: center;
-            for i in 6: Rectangle {
-                width: 16px;
-                height: PlatformState.is-android ? 10px : 6px;
-                background: {
-                    if GameState.current-hotbar-panel == i {
-                        @linear-gradient(90deg, #FFC040 0%, #FF8040 100%)
-                    } else if ta.has-hover {
-                        #40404080
-                    } else {
-                        #30303060
-                    }
-                };
-                border-radius: 2px;
-                border-width: 1px;
-                border-color: GameState.current-hotbar-panel == i ? #FFD06060 : #20202040;
-                ta := TouchArea {
-                    mouse-cursor: MouseCursor.pointer;
-                    clicked => {
-                        GameState.set-hotbar-panel(i);
-                    }
+            for i in 6: HotBarSelectorButton {
+                selected: GameState.current-hotbar-panel == i;
+                button-height: PlatformState.is-android ? 10px : 6px;
+                activated => {
+                    GameState.set-hotbar-panel(i);
                 }
             }
 
@@ -220,6 +438,82 @@ export component HotBar inherits Rectangle {
         }
         if GameState.current-hotbar-panel == 5: CustomHotBarSlots {
             offset: 24;
+        }
+    }
+
+    if !PlatformState.is-android: HorizontalBox {
+        padding: 6px;
+        spacing: 4px;
+
+        if !desktop-expanded: VerticalLayout {
+            spacing: desktop-expanded ? 6px : 2px;
+            alignment: center;
+
+            for i in 6: HotBarSelectorButton {
+                selected: GameState.current-hotbar-panel == i;
+                button-height: 6px;
+                activated => {
+                    GameState.set-hotbar-panel(i);
+                }
+            }
+        }
+
+        if desktop-expanded: VerticalLayout {
+            spacing: 6px;
+            alignment: center;
+
+            for i in 4: HotBarSelectorButton {
+                selected: i == 3 ? GameState.current-hotbar-panel >= 3 : GameState.current-hotbar-panel == i;
+                button-height: 14px;
+                activated => {
+                    GameState.set-hotbar-panel(i);
+                }
+            }
+        }
+
+        if GameState.current-hotbar-panel == 0 && desktop-row-count == 1: DesktopInventorySlotsOne { }
+        if GameState.current-hotbar-panel == 0 && desktop-row-count == 3: DesktopInventorySlotsThree { }
+        if GameState.current-hotbar-panel == 0 && desktop-row-count == 5: DesktopInventorySlotsFive { }
+
+        if GameState.current-hotbar-panel == 1 && desktop-row-count == 1: DesktopSkillSlotsOne { }
+        if GameState.current-hotbar-panel == 1 && desktop-row-count == 3: DesktopSkillSlotsThree { }
+        if GameState.current-hotbar-panel == 1 && desktop-row-count == 5: DesktopSkillSlotsFive { }
+
+        if GameState.current-hotbar-panel == 2 && desktop-row-count == 1: DesktopSpellSlotsOne { }
+        if GameState.current-hotbar-panel == 2 && desktop-row-count == 3: DesktopSpellSlotsThree { }
+        if GameState.current-hotbar-panel == 2 && desktop-row-count == 5: DesktopSpellSlotsFive { }
+
+        if !desktop-expanded && GameState.current-hotbar-panel == 3: DesktopCollapsedCustomHotBarSlots {
+            offset: 0;
+        }
+        if !desktop-expanded && GameState.current-hotbar-panel == 4: DesktopCollapsedCustomHotBarSlots {
+            offset: 12;
+        }
+        if !desktop-expanded && GameState.current-hotbar-panel == 5: DesktopCollapsedCustomHotBarSlots {
+            offset: 24;
+        }
+        if desktop-expanded && GameState.current-hotbar-panel >= 3 && desktop-row-count == 3: DesktopExpandedCustomHotBarSlotsThree { }
+        if desktop-expanded && GameState.current-hotbar-panel >= 3 && desktop-row-count == 5: DesktopExpandedCustomHotBarSlotsFive { }
+
+        VerticalLayout {
+            spacing: 4px;
+            alignment: center;
+
+            HotBarArrowButton {
+                label: "▲";
+                enabled: GameState.hotbar-row-count < 5;
+                activated => {
+                    GameState.expand-hotbar();
+                }
+            }
+
+            HotBarArrowButton {
+                label: "▼";
+                enabled: GameState.hotbar-row-count > 1;
+                activated => {
+                    GameState.collapse-hotbar();
+                }
+            }
         }
     }
 }

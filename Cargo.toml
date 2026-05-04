@@ -98,7 +98,7 @@ slint = { version = "1.16.1", default-features = false, features = [
     "backend-android-activity-06",
 ] }
 i-slint-core = "=1.16.1"
-toml = "1.1.2"
+toml = "1.1"
 windows-sys = { version = "0.61", features = ["Win32_System_Console"] }
 rangemap = { version = "1.7", features = ["serde1"] }
 

@@ -115,6 +115,8 @@ pub enum UiToCore {
     SetHotbarPanel {
         panel_num: u8,
     },
+    ExpandHotbarRows,
+    CollapseHotbarRows,
     RequestWorldList,
     SetWorldListFilter {
         filter: WorldListFilter,

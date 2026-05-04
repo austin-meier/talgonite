@@ -39,9 +39,10 @@ impl HotbarState {
 #[derive(Resource, Default)]
 pub struct HotbarPanelState {
     pub current_panel: HotbarPanel,
+    pub rows: HotbarRows,
 }
 
-pub fn sync_hotbar_panel_to_settings(
+pub fn sync_hotbar_view_to_settings(
     hotbar_panel: Res<HotbarPanelState>,
     mut settings: ResMut<Settings>,
     session: Option<Res<CurrentSession>>,
@@ -59,6 +60,49 @@ pub fn sync_hotbar_panel_to_settings(
         &session.username,
         hotbar_panel.current_panel as i32,
     );
+    settings.set_hotbar_row_count(
+        session.server_id,
+        &session.username,
+        hotbar_panel.rows.as_i32(),
+    );
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HotbarRows {
+    #[default]
+    One = 1,
+    Three = 3,
+    Five = 5,
+}
+
+impl HotbarRows {
+    pub fn from_i32(value: i32) -> Self {
+        match value {
+            3 => Self::Three,
+            5 => Self::Five,
+            _ => Self::One,
+        }
+    }
+
+    pub fn as_i32(self) -> i32 {
+        self as i32
+    }
+
+    pub fn expand(self) -> Self {
+        match self {
+            Self::One => Self::Three,
+            Self::Three => Self::Five,
+            Self::Five => Self::Five,
+        }
+    }
+
+    pub fn collapse(self) -> Self {
+        match self {
+            Self::Five => Self::Three,
+            Self::Three => Self::One,
+            Self::One => Self::One,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -83,5 +127,9 @@ impl HotbarPanel {
             5 => Self::Hotbar3,
             _ => Self::Inventory,
         }
+    }
+
+    pub fn is_custom(self) -> bool {
+        matches!(self, Self::Hotbar1 | Self::Hotbar2 | Self::Hotbar3)
     }
 }

@@ -460,8 +460,11 @@ pub fn input_handling_system(
             Some(&gamepad_config),
         ) {
             let panel = hotbar_panel_state.current_panel as u8;
+            let expanded_custom = hotbar_panel_state.rows != crate::ecs::hotbar::HotbarRows::One
+                && hotbar_panel_state.current_panel.is_custom();
             let slot_index = match panel {
                 0..=2 => i,
+                3..=5 if expanded_custom => i,
                 3..=5 => (panel - 3) as usize * 12 + i,
                 _ => continue,
             };

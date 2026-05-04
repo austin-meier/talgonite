@@ -583,6 +583,12 @@ fn handle_ui_inbound_ingame(
                 hotbar_panel_state.current_panel =
                     crate::ecs::hotbar::HotbarPanel::from_u8(*panel_num);
             }
+            UiToCore::ExpandHotbarRows => {
+                hotbar_panel_state.rows = hotbar_panel_state.rows.expand();
+            }
+            UiToCore::CollapseHotbarRows => {
+                hotbar_panel_state.rows = hotbar_panel_state.rows.collapse();
+            }
             UiToCore::RequestWorldList => {
                 outbox.send(&packets::client::WorldListRequest);
             }
@@ -2364,8 +2370,10 @@ fn handle_login_results(
 
         // Load the saved hotbar panel selection
         let saved_panel = settings.get_current_hotbar_panel(inner.server_id, &inner.username);
+        let saved_row_count = settings.get_hotbar_row_count(inner.server_id, &inner.username);
         let mut hotbar_panel_state = crate::ecs::hotbar::HotbarPanelState::default();
         hotbar_panel_state.current_panel = crate::ecs::hotbar::HotbarPanel::from_u8(saved_panel as u8);
+        hotbar_panel_state.rows = crate::ecs::hotbar::HotbarRows::from_i32(saved_row_count);
         commands.insert_resource(hotbar_panel_state);
 
         next_state.set(AppState::InGame);

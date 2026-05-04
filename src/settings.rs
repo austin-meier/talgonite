@@ -75,6 +75,7 @@ impl Settings {
         for cred in &self.saved_credentials {
             let hotbars = self.get_hotbars(cred.server_id, &cred.username);
             let current_hotbar_panel = self.get_current_hotbar_panel(cred.server_id, &cred.username);
+            let hotbar_row_count = self.get_hotbar_row_count(cred.server_id, &cred.username);
             let profile = CharacterProfile {
                 id: cred.id.clone(),
                 server_id: cred.server_id,
@@ -84,6 +85,7 @@ impl Settings {
                 hotbars: HotbarData {
                     bars: hotbars,
                     current_panel: current_hotbar_panel,
+                    row_count: hotbar_row_count,
                 },
             };
 

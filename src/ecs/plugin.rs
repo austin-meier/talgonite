@@ -65,7 +65,7 @@ impl Plugin for GamePlugin {
                     systems::consume_interaction_intents_system
                         .after(systems::resolve_interaction_intents_system)
                         .after(systems::player_interruption_system),
-                    crate::ecs::hotbar::sync_hotbar_panel_to_settings,
+                    crate::ecs::hotbar::sync_hotbar_view_to_settings,
                     systems::handle_public_messages,
                     systems::expire_speech_bubbles,
                     systems::expire_chant_labels,

@@ -190,6 +190,7 @@ fn reset_game_state_for_main_menu(window: &crate::MainWindow) {
     game_state.set_show_inventory(false);
     game_state.set_show_skills(false);
     game_state.set_show_spells(false);
+    game_state.set_hotbar_row_count(1);
 
     game_state.set_show_world_list(false);
     game_state.set_world_list_loading(false);
@@ -271,13 +272,13 @@ pub fn apply_core_to_slint(
     if ability.is_changed() {
         let game_state = slint::ComponentHandle::global::<crate::GameState>(&strong);
 
-        if game_state.get_skills().row_count() != ability.skills.len() {
+        if game_state.get_skills().row_count() != 60 {
             game_state.set_skills(slint::ModelRc::new(slint::VecModel::from(
-                vec![crate::Skill::default(); ability.skills.len()],
+                vec![crate::Skill::default(); 60],
             )));
         }
         let skills_state = game_state.get_skills();
-        let mut si = 0;
+        let mut slint_skills = vec![crate::Skill::default(); 60];
         for s in &ability.skills {
             let icon = asset_loader
                 .load_skill_icon(&game_files, s.sprite)
@@ -295,23 +296,29 @@ pub fn apply_core_to_slint(
                 },
             };
 
-            if let Some(m) = skills_state.row_data(si) {
+            let index = s.slot.saturating_sub(1) as usize;
+            if index < slint_skills.len() {
+                slint_skills[index] = skill;
+            }
+        }
+
+        for (idx, skill) in slint_skills.into_iter().enumerate() {
+            if let Some(m) = skills_state.row_data(idx) {
                 if m != skill {
-                    skills_state.set_row_data(si, skill);
+                    skills_state.set_row_data(idx, skill);
                     hotbar_dirty = true;
                 }
             }
-            si += 1;
         }
 
         // Update Spells
-        if game_state.get_spells().row_count() != ability.spells.len() {
+        if game_state.get_spells().row_count() != 60 {
             game_state.set_spells(slint::ModelRc::new(slint::VecModel::from(
-                vec![crate::Spell::default(); ability.spells.len()],
+                vec![crate::Spell::default(); 60],
             )));
         }
         let spells_state = game_state.get_spells();
-        let mut spi = 0;
+        let mut slint_spells = vec![crate::Spell::default(); 60];
         for s in &ability.spells {
             let icon = asset_loader
                 .load_spell_icon(&game_files, s.sprite)
@@ -323,13 +330,19 @@ pub fn apply_core_to_slint(
                 prompt: slint::SharedString::from(s.prompt.as_str()),
             };
 
-            if let Some(m) = spells_state.row_data(spi) {
+            let index = s.slot.saturating_sub(1) as usize;
+            if index < slint_spells.len() {
+                slint_spells[index] = spell;
+            }
+        }
+
+        for (idx, spell) in slint_spells.into_iter().enumerate() {
+            if let Some(m) = spells_state.row_data(idx) {
                 if m != spell {
-                    spells_state.set_row_data(spi, spell);
+                    spells_state.set_row_data(idx, spell);
                     hotbar_dirty = true;
                 }
             }
-            spi += 1;
         }
     }
 
@@ -695,9 +708,11 @@ pub fn apply_core_to_slint(
     if hotbar_dirty {
         let game_state = slint::ComponentHandle::global::<crate::GameState>(&strong);
 
-        if game_state.get_hotbar().row_count() != 36 {
+        let expected_hotbar_entries = hotbar.config.bars.len() * 12;
+
+        if game_state.get_hotbar().row_count() != expected_hotbar_entries {
             game_state.set_hotbar(slint::ModelRc::new(slint::VecModel::from(
-                vec![crate::HotbarEntry::default(); 36],
+                vec![crate::HotbarEntry::default(); expected_hotbar_entries],
             )));
         }
 
@@ -791,6 +806,7 @@ pub fn apply_core_to_slint(
     if hotbar_panel.is_changed() {
         let game_state = slint::ComponentHandle::global::<crate::GameState>(&strong);
         game_state.set_current_hotbar_panel(hotbar_panel.current_panel as i32);
+        game_state.set_hotbar_row_count(hotbar_panel.rows.as_i32());
     }
 
     if world_list.is_changed() {

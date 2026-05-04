@@ -126,6 +126,26 @@ pub fn wire_game_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
         });
     }
 
+    // Expand hotbar rows
+    {
+        let tx = tx.clone();
+        game_state.on_expand_hotbar(move || {
+            if tx.send(UiToCore::ExpandHotbarRows).is_err() {
+                tracing::error!("Failed to send ExpandHotbarRows message");
+            }
+        });
+    }
+
+    // Collapse hotbar rows
+    {
+        let tx = tx.clone();
+        game_state.on_collapse_hotbar(move || {
+            if tx.send(UiToCore::CollapseHotbarRows).is_err() {
+                tracing::error!("Failed to send CollapseHotbarRows message");
+            }
+        });
+    }
+
     // Refresh world list
     {
         let tx = tx.clone();

@@ -448,6 +448,7 @@ impl ActionId {
             "SK" => SlotPanelType::Skill,
             "SP" => SlotPanelType::Spell,
             "IT" => SlotPanelType::Item,
+            "MC" => SlotPanelType::Macro,
             _ => SlotPanelType::None,
         };
 
@@ -477,6 +478,10 @@ impl ActionId {
         Self::new("IT", sprite, name)
     }
 
+    pub fn from_macro(sprite: u16, name: &str) -> Self {
+        Self::new("MC", sprite, name)
+    }
+
     pub fn as_str(&self) -> &str {
         &self.id
     }
@@ -497,6 +502,8 @@ impl ActionId {
             SlotPanelType::Skill
         } else if s.starts_with("SP") {
             SlotPanelType::Spell
+        } else if s.starts_with("MC") {
+            SlotPanelType::Macro
         } else {
             SlotPanelType::None
         };

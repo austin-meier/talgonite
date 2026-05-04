@@ -75,6 +75,7 @@ impl Settings {
         for cred in &self.saved_credentials {
             let hotbars = self.get_hotbars(cred.server_id, &cred.username);
             let current_hotbar_panel = self.get_current_hotbar_panel(cred.server_id, &cred.username);
+            let macros = self.get_macros(cred.server_id, &cred.username);
             let hotbar_row_count = self.get_hotbar_row_count(cred.server_id, &cred.username);
             let profile = CharacterProfile {
                 id: cred.id.clone(),
@@ -87,6 +88,7 @@ impl Settings {
                     current_panel: current_hotbar_panel,
                     row_count: hotbar_row_count,
                 },
+                macros,
             };
 
             let profile_path = config.server_characters_dir(cred.server_id)
@@ -189,7 +191,8 @@ fn load_profiles_from_dir(dir: &std::path::Path, settings: &mut Settings) {
                             last_used: profile.last_used,
                             preview: profile.preview,
                         });
-                        settings.hotbars.insert(profile.id, profile.hotbars);
+                        settings.hotbars.insert(profile.id.clone(), profile.hotbars);
+                        settings.macros.insert(profile.id, profile.macros);
                     }
                 }
             }

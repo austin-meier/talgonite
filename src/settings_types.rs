@@ -55,6 +55,8 @@ pub struct Settings {
     pub saved_credentials: Vec<SavedCredential>,
     #[serde(skip)]
     pub hotbars: HashMap<String, HotbarData>,
+    #[serde(skip)]
+    pub macros: HashMap<String, HashMap<String, String>>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -67,6 +69,8 @@ pub struct CharacterProfile {
     pub preview: Option<CharacterPreview>,
     #[serde(default)]
     pub hotbars: HotbarData,
+    #[serde(default)]
+    pub macros: HashMap<String, String>,
 }
 
 impl Default for Settings {
@@ -92,6 +96,7 @@ impl Default for Settings {
             }],
             saved_credentials: vec![],
             hotbars: HashMap::new(),
+            macros: HashMap::new(),
         }
     }
 }
@@ -118,6 +123,19 @@ impl Settings {
     pub fn set_current_hotbar_panel(&mut self, server_id: u32, username: &str, panel: i32) {
         let key = format!("{}:{}", server_id, username);
         self.hotbars.entry(key).or_default().current_panel = panel;
+    }
+
+    pub fn get_macros(&self, server_id: u32, username: &str) -> HashMap<String, String> {
+        let key = format!("{}:{}", server_id, username);
+        self.macros
+            .get(&key)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn set_macros(&mut self, server_id: u32, username: &str, macros: HashMap<String, String>) {
+        let key = format!("{}:{}", server_id, username);
+        self.macros.insert(key, macros);
     }
 
     pub fn get_hotbar_row_count(&self, server_id: u32, username: &str) -> i32 {

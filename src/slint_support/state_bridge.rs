@@ -7,6 +7,50 @@ use game_types::SlotPanelType;
 use game_ui::{ActionId, LoginError};
 use slint::Model;
 
+fn macro_display_name(action_id: &str) -> String {
+    let raw = action_id.get(6..).unwrap_or(action_id);
+    let mut spaced = String::with_capacity(raw.len() + 4);
+    let mut prev_was_lower_or_digit = false;
+
+    for ch in raw.chars() {
+        if ch == '_' || ch == '-' {
+            if !spaced.ends_with(' ') {
+                spaced.push(' ');
+            }
+            prev_was_lower_or_digit = false;
+            continue;
+        }
+
+        if ch.is_ascii_uppercase() && prev_was_lower_or_digit && !spaced.ends_with(' ') {
+            spaced.push(' ');
+        }
+
+        prev_was_lower_or_digit = ch.is_ascii_lowercase() || ch.is_ascii_digit();
+        spaced.push(ch);
+    }
+
+    let mut titled = String::with_capacity(spaced.len());
+    for (idx, word) in spaced.split_whitespace().enumerate() {
+        if idx > 0 {
+            titled.push(' ');
+        }
+
+        let mut chars = word.chars();
+        if let Some(first) = chars.next() {
+            titled.push(first.to_ascii_uppercase());
+            for ch in chars {
+                titled.push(ch.to_ascii_lowercase());
+            }
+        }
+    }
+
+    if titled.is_empty() {
+        "Macro".to_string()
+    } else {
+        titled
+    }
+}
+
 pub fn sync_portrait_to_slint(
     mut portrait: ResMut<PlayerPortraitState>,
     win: Res<SlintWindow>,
@@ -463,7 +507,9 @@ pub fn apply_core_to_slint(
 
                     if entry.show_in_action_bar {
                         let rich_text = crate::rich_text::RichText::parse(entry.text.as_str());
-                        action_bar_messages.push(slint::SharedString::from(rich_text.to_plain_string().as_str()));
+                        action_bar_messages.push(slint::SharedString::from(
+                            rich_text.to_plain_string().as_str(),
+                        ));
                         while action_bar_messages.len() > 4 {
                             action_bar_messages.remove(0);
                         }
@@ -767,6 +813,11 @@ pub fn apply_core_to_slint(
                                 cooldown = hotbar.cooldowns.get(&slot.action_id).cloned();
                             }
                         }
+                        SlotPanelType::Macro => {
+                            name =
+                                slint::SharedString::from(macro_display_name(action_id.as_str()));
+                            enabled = true;
+                        }
                         _ => {}
                     }
 
@@ -774,6 +825,7 @@ pub fn apply_core_to_slint(
                         SlotPanelType::Item => asset_loader.load_item_icon(&game_files, sprite),
                         SlotPanelType::Skill => asset_loader.load_skill_icon(&game_files, sprite),
                         SlotPanelType::Spell => asset_loader.load_spell_icon(&game_files, sprite),
+                        SlotPanelType::Macro => asset_loader.load_skill_icon(&game_files, 104),
                         _ => Ok(slint::Image::default()),
                     }
                     .unwrap_or_default();
@@ -924,39 +976,40 @@ pub fn sync_world_labels_to_slint(
         let mut hp_assigned = false;
 
         // Helper to push a label and assign HP once per entity
-        let mut push_v_label =
-            |label: crate::ecs::components::WorldLabel| {
-                let mut final_hp = -1;
-                if !hp_assigned && hp >= 0 {
-                    final_hp = hp;
-                    hp_assigned = true;
-                }
+        let mut push_v_label = |label: crate::ecs::components::WorldLabel| {
+            let mut final_hp = -1;
+            if !hp_assigned && hp >= 0 {
+                final_hp = hp;
+                hp_assigned = true;
+            }
 
-                if label.is_speech {
-                    slint_speech_bubbles.push(crate::SpeechBubble {
-                        entity_id: entity.index().index() as i32,
-                        text: crate::rich_text::RichText::parse(label.text.as_str()).to_slint_styled_text(),
-                        world_x: world_pos.x,
-                        world_y: world_pos.y,
-                        y_offset: label.y_offset,
-                    });
-                } else {
-                    slint_labels.push(crate::WorldLabel {
-                        entity_id: entity.index().index() as i32,
-                        text: slint::SharedString::from(label.text.as_str()),
-                        world_x: world_pos.x,
-                        world_y: world_pos.y,
-                        y_offset: label.y_offset,
-                        color: slint::Color::from_argb_f32(
-                            label.color.w,
-                            label.color.x,
-                            label.color.y,
-                            label.color.z,
-                        ).into(),
-                        health_percent: final_hp,
-                    });
-                }
-            };
+            if label.is_speech {
+                slint_speech_bubbles.push(crate::SpeechBubble {
+                    entity_id: entity.index().index() as i32,
+                    text: crate::rich_text::RichText::parse(label.text.as_str())
+                        .to_slint_styled_text(),
+                    world_x: world_pos.x,
+                    world_y: world_pos.y,
+                    y_offset: label.y_offset,
+                });
+            } else {
+                slint_labels.push(crate::WorldLabel {
+                    entity_id: entity.index().index() as i32,
+                    text: slint::SharedString::from(label.text.as_str()),
+                    world_x: world_pos.x,
+                    world_y: world_pos.y,
+                    y_offset: label.y_offset,
+                    color: slint::Color::from_argb_f32(
+                        label.color.w,
+                        label.color.x,
+                        label.color.y,
+                        label.color.z,
+                    )
+                    .into(),
+                    health_percent: final_hp,
+                });
+            }
+        };
 
         if let Some(hover) = hover_label {
             push_v_label(hover.to_world_label());
@@ -1010,7 +1063,10 @@ pub fn sync_map_name_to_slint(
 /// Sync GroupState to Slint: local player first (position 1 = Leave), and whether we are the server-designated leader (can Kick).
 pub fn sync_group_to_slint(
     group_state: Res<crate::webui::plugin::GroupState>,
-    local_player_query: Query<&crate::ecs::components::Player, With<crate::ecs::components::LocalPlayer>>,
+    local_player_query: Query<
+        &crate::ecs::components::Player,
+        With<crate::ecs::components::LocalPlayer>,
+    >,
     win: Res<SlintWindow>,
 ) {
     if !group_state.is_changed() {

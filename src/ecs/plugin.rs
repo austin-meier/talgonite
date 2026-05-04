@@ -19,6 +19,8 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         // Configure system set ordering
         systems::configure_game_sets(app);
+        
+        app.add_plugins(crate::ecs::macros::MacrosPlugin);
 
         app.init_resource::<SpellCastingState>()
             .init_resource::<LocalSocialStatus>()

@@ -135,6 +135,7 @@ struct HotbarResources<'w> {
     hotbar_state: ResMut<'w, crate::ecs::hotbar::HotbarState>,
     hotbar_panel_state: ResMut<'w, crate::ecs::hotbar::HotbarPanelState>,
     session: Res<'w, crate::CurrentSession>,
+    macro_manager: Res<'w, crate::ecs::macros::MacroManager>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -205,6 +206,7 @@ fn handle_ui_inbound_ingame(
 ) {
     let mut hotbar_state = hotbar_res.hotbar_state;
     let mut hotbar_panel_state = hotbar_res.hotbar_panel_state;
+    let macro_manager = hotbar_res.macro_manager;
     let inv_state = ui_state.inv_state;
     let ability_state = ui_state.ability_state;
     let mut world_list_state = ui_state.world_list_state;
@@ -235,28 +237,32 @@ fn handle_ui_inbound_ingame(
 
                 match selected.action {
                     crate::events::WorldContextAction::WalkToTile { tile_x, tile_y } => {
-                        world_context.interaction_intents.write(InteractionIntentEvent {
-                            source: crate::events::ClickSource::AndroidLongPress,
-                            target_kind: InteractionTargetKind::Ground,
-                            target_entity: None,
-                            tile_x,
-                            tile_y,
-                            action: InteractionIntentAction::WalkToTile,
-                        });
+                        world_context
+                            .interaction_intents
+                            .write(InteractionIntentEvent {
+                                source: crate::events::ClickSource::AndroidLongPress,
+                                target_kind: InteractionTargetKind::Ground,
+                                target_entity: None,
+                                tile_x,
+                                tile_y,
+                                action: InteractionIntentAction::WalkToTile,
+                            });
                     }
                     crate::events::WorldContextAction::ApproachActor {
                         entity,
                         tile_x,
                         tile_y,
                     } => {
-                        world_context.interaction_intents.write(InteractionIntentEvent {
-                            source: crate::events::ClickSource::AndroidLongPress,
-                            target_kind: InteractionTargetKind::Actor,
-                            target_entity: Some(entity),
-                            tile_x,
-                            tile_y,
-                            action: InteractionIntentAction::ApproachAndFace,
-                        });
+                        world_context
+                            .interaction_intents
+                            .write(InteractionIntentEvent {
+                                source: crate::events::ClickSource::AndroidLongPress,
+                                target_kind: InteractionTargetKind::Actor,
+                                target_entity: Some(entity),
+                                tile_x,
+                                tile_y,
+                                action: InteractionIntentAction::ApproachAndFace,
+                            });
                     }
                     crate::events::WorldContextAction::ViewProfile { entity, is_self } => {
                         if is_self {
@@ -650,13 +656,19 @@ fn handle_ui_inbound_ingame(
                                             .write(AbilityEvent::UseSpell { slot: spell.slot });
                                     }
                                 }
+                                SlotPanelType::Macro => {
+                                    let macros =
+                                        settings.get_macros(session.server_id, &session.username);
+                                    if let Some(script) = macros.get(action_id.as_str()) {
+                                        macro_manager.execute(script);
+                                    }
+                                }
                                 _ => {}
                             }
                         }
                     }
                 }
-                SlotPanelType::World => {}
-                SlotPanelType::None => {}
+                SlotPanelType::World | SlotPanelType::None | SlotPanelType::Macro => {}
             },
             UiToCore::DragDropAction {
                 src_category,
@@ -890,7 +902,10 @@ fn handle_ui_inbound_ingame(
             UiToCore::SendGroupInvite { name } => {
                 outbox.send(&packets::client::GroupInvite::Request { name: name.clone() });
             }
-            UiToCore::RespondGroupInvite { accept, source_name } => {
+            UiToCore::RespondGroupInvite {
+                accept,
+                source_name,
+            } => {
                 if *accept {
                     outbox.send(&packets::client::GroupInvite::Forced {
                         name: source_name.clone(),
@@ -1496,7 +1511,9 @@ fn bridge_session_events(
                         if s.eq_ignore_ascii_case("Group members") {
                             return false;
                         }
-                        if s.starts_with("Total ") && s["Total ".len()..].trim().parse::<u32>().is_ok() {
+                        if s.starts_with("Total ")
+                            && s["Total ".len()..].trim().parse::<u32>().is_ok()
+                        {
                             return false;
                         }
                         if s.starts_with("Spouse:") {
@@ -2363,7 +2380,32 @@ fn handle_login_results(
             server_url,
         });
 
-        let hotbars = settings.get_hotbars(inner.server_id, &inner.username);
+        let mut hotbars = settings.get_hotbars(inner.server_id, &inner.username);
+        let mut macros = settings.get_macros(inner.server_id, &inner.username);
+
+        if macros.is_empty() {
+            // Populate defaults for slots 12-47 (values 9-44)
+            for i in 9..=44 {
+                let Ok(body_anim) = packets::types::BodyAnimationKind::try_from(i) else {
+                    continue;
+                };
+                let name = crate::ecs::macros::get_animation_name_by_id(body_anim);
+                if !name.is_empty() {
+                    let id = format!("MC{:04}{}", i, name);
+                    macros.insert(id.clone(), format!("emote(\"{}\");", name));
+                    // slots 12-47 -> bar 1,2,3
+                    let slot_idx = i - 9 + 12; // 9->12, ..., 44->47
+                    let bar = slot_idx / 12;
+                    let slot_in_bar = slot_idx % 12;
+                    if (bar as usize) < hotbars.bars.len() {
+                        hotbars.bars[bar as usize][slot_in_bar as usize].action_id = id;
+                    }
+                }
+            }
+            settings.set_macros(inner.server_id, &inner.username, macros.clone());
+            settings.set_hotbars(inner.server_id, &inner.username, hotbars.clone());
+        }
+
         let mut hotbar_state = crate::ecs::hotbar::HotbarState::new();
         hotbar_state.config = hotbars;
         commands.insert_resource(hotbar_state);

@@ -7,4 +7,5 @@ pub enum SlotPanelType {
     Spell,
     Hotbar,
     World,
+    Macro,
 }

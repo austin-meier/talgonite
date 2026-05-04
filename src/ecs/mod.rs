@@ -9,6 +9,7 @@ pub mod collision;
 pub mod components;
 pub mod hotbar;
 pub mod interaction;
+pub mod macros;
 pub mod plugin;
 pub mod social_status;
 pub mod spell_casting;

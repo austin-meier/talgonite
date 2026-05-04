@@ -501,8 +501,7 @@ pub fn input_handling_system(
                         },
                     ));
                 }
-                SlotPanelType::World => {}
-                SlotPanelType::None => {}
+                SlotPanelType::Macro | SlotPanelType::World | SlotPanelType::None => {}
             }
         }
     }

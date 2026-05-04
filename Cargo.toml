@@ -101,6 +101,7 @@ i-slint-core = "=1.16.1"
 toml = "1.1"
 windows-sys = { version = "0.61", features = ["Win32_System_Console"] }
 rangemap = { version = "1.7", features = ["serde1"] }
+rhai = { version = "1.24.0", features = ["sync"] }
 
 [dev-dependencies]
 insta = "1.44"

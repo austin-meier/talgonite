@@ -412,7 +412,7 @@ export global NpcDialogState {
 export global SocialStatusState {
     in-out property <SocialStatus> current-status: SocialStatus.Online;
     in-out property <bool> enabled: true;
-    
+
     // Callback for Rust bridge - called when user changes status
     callback status-changed(SocialStatus);
 }

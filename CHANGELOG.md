@@ -16,7 +16,7 @@ More rows of hotkeys can be assigned to the action bar. By default the action ba
 
 Basically this adds the emote hotkeys from the official client, but those slots in the action bar can be set to something else instead if you'd rather.
 
-## Social status changing
+## Social status changing (thanks @wren11)
 
 You can change your status to 'Lone Hunter', 'Need Help' and the rest through a dropdown on your profile.
 

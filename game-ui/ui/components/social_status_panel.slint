@@ -1,42 +1,110 @@
 import { Theme } from "../theme.slint";
 import { ScrollView } from "std-widgets.slint";
-import { SocialStatusState, SocialStatusEntry, SocialStatus } from "../game_state.slint";
+import {
+    SocialStatusState,
+    SocialStatusEntry,
+    SocialStatus,
+} from "../game_state.slint";
 
 // Status options - UI concern, lives in component
 // Entries are indexed by SocialStatus enum order: Online=0, DoNotDisturb=1, etc.
 global SocialStatusOptions {
     out property <[SocialStatusEntry]> entries: [
-        { status: SocialStatus.Online,       name: "Online",         description: "Available for interaction",    icon: "●", color: #22c55e },
-        { status: SocialStatus.DoNotDisturb, name: "Do Not Disturb", description: "Busy - please don't message",  icon: "⊘", color: #ef4444 },
-        { status: SocialStatus.DayDreaming,  name: "Day Dreaming",   description: "Away from keyboard",           icon: "☽", color: #eab308 },
-        { status: SocialStatus.NeedGroup,    name: "Need Group",     description: "Looking for a group",          icon: "⚑", color: #3b82f6 },
-        { status: SocialStatus.Grouped,      name: "Grouped",        description: "Already in a group",           icon: "⚐", color: #8b5cf6 },
-        { status: SocialStatus.LoneHunter,   name: "Lone Hunter",    description: "Hunting solo",                 icon: "◆", color: #6366f1 },
-        { status: SocialStatus.GroupHunting, name: "Group Hunting",  description: "Hunting with group",           icon: "◇", color: #ec4899 },
-        { status: SocialStatus.NeedHelp,     name: "Need Help",      description: "Requesting assistance",        icon: "?", color: #f97316 },
+        {
+            status: SocialStatus.Online,
+            name: "Online",
+            description: "Available for interaction",
+            icon: "●",
+            color: #22c55e
+        },
+        {
+            status: SocialStatus.DoNotDisturb,
+            name: "Do Not Disturb",
+            description: "Busy - please don't message",
+            icon: "⊘",
+            color: #ef4444
+        },
+        {
+            status: SocialStatus.DayDreaming,
+            name: "Day Dreaming",
+            description: "Away from keyboard",
+            icon: "☽",
+            color: #eab308
+        },
+        {
+            status: SocialStatus.NeedGroup,
+            name: "Need Group",
+            description: "Looking for a group",
+            icon: "⚑",
+            color: #3b82f6
+        },
+        {
+            status: SocialStatus.Grouped,
+            name: "Grouped",
+            description: "Already in a group",
+            icon: "⚐",
+            color: #8b5cf6
+        },
+        {
+            status: SocialStatus.LoneHunter,
+            name: "Lone Hunter",
+            description: "Hunting solo",
+            icon: "◆",
+            color: #6366f1
+        },
+        {
+            status: SocialStatus.GroupHunting,
+            name: "Group Hunting",
+            description: "Hunting with group",
+            icon: "◇",
+            color: #ec4899
+        },
+        {
+            status: SocialStatus.NeedHelp,
+            name: "Need Help",
+            description: "Requesting assistance",
+            icon: "?",
+            color: #f97316
+        },
     ];
-    
+
     // Get entry by status - uses enum index directly since entries are ordered to match enum
     public pure function get-entry(status: SocialStatus) -> SocialStatusEntry {
-        if status == SocialStatus.Online { return entries[0]; }
-        if status == SocialStatus.DoNotDisturb { return entries[1]; }
-        if status == SocialStatus.DayDreaming { return entries[2]; }
-        if status == SocialStatus.NeedGroup { return entries[3]; }
-        if status == SocialStatus.Grouped { return entries[4]; }
-        if status == SocialStatus.LoneHunter { return entries[5]; }
-        if status == SocialStatus.GroupHunting { return entries[6]; }
-        if status == SocialStatus.NeedHelp { return entries[7]; }
+        if status == SocialStatus.Online {
+            return entries[0];
+        }
+        if status == SocialStatus.DoNotDisturb {
+            return entries[1];
+        }
+        if status == SocialStatus.DayDreaming {
+            return entries[2];
+        }
+        if status == SocialStatus.NeedGroup {
+            return entries[3];
+        }
+        if status == SocialStatus.Grouped {
+            return entries[4];
+        }
+        if status == SocialStatus.LoneHunter {
+            return entries[5];
+        }
+        if status == SocialStatus.GroupHunting {
+            return entries[6];
+        }
+        if status == SocialStatus.NeedHelp {
+            return entries[7];
+        }
         return entries[0];
     }
-    
+
     public pure function is-away(status: SocialStatus) -> bool {
         return status == SocialStatus.DayDreaming;
     }
-    
+
     public pure function is-busy(status: SocialStatus) -> bool {
         return status == SocialStatus.DoNotDisturb;
     }
-    
+
     public pure function is-lfg(status: SocialStatus) -> bool {
         return status == SocialStatus.NeedGroup;
     }
@@ -45,7 +113,7 @@ global SocialStatusOptions {
 component StatusDot inherits Rectangle {
     in property <color> status-color: #22c55e;
     in property <bool> pulsing: false;
-    
+
     width: 10px;
     height: 10px;
     border-radius: 5px;
@@ -58,43 +126,43 @@ component StatusOptionRow inherits Rectangle {
     in property <SocialStatusEntry> entry;
     in property <bool> is-selected: false;
     callback clicked();
-    
+
     height: 36px;
     background: is-selected ? Theme.accent-subtle : touch.has-hover ? Theme.surface-secondary : transparent;
     border-radius: Theme.radius-small;
-    
+
     animate background { duration: 100ms; }
-    
+
     HorizontalLayout {
         padding-left: Theme.spacing-small;
         padding-right: Theme.spacing-small;
         spacing: Theme.spacing-small;
-        
+
         StatusDot {
             status-color: entry.color;
             y: (parent.height - self.height) / 2;
         }
-        
+
         VerticalLayout {
             spacing: 1px;
             alignment: center;
-            
+
             Text {
                 text: entry.name;
                 color: is-selected ? Theme.accent : Theme.foreground;
                 font-size: Theme.font-size-small;
                 font-weight: is-selected ? 700 : 400;
             }
-            
+
             Text {
                 text: entry.description;
                 color: Theme.foreground-subtle;
                 font-size: Theme.font-size-xsmall;
             }
         }
-        
+
         Rectangle { }
-        
+
         if is-selected: Text {
             text: "✓";
             color: Theme.accent;
@@ -102,9 +170,11 @@ component StatusOptionRow inherits Rectangle {
             vertical-alignment: center;
         }
     }
-    
+
     touch := TouchArea {
-        clicked => { root.clicked(); }
+        clicked => {
+            root.clicked();
+        }
     }
 }
 
@@ -112,28 +182,28 @@ export component SocialStatusIndicator inherits Rectangle {
     in property <bool> interactive: true;
     in property <SocialStatus> status: SocialStatusState.current-status;
     in-out property <bool> dropdown-open: false;
-    
+
     callback status-selected(SocialStatus);
-    
+
     private property <SocialStatusEntry> current: SocialStatusOptions.get-entry(status);
-    
-    width: 120px;
+
+    width: 86px;
     height: 28px;
     background: interactive && touch.has-hover ? Theme.surface-secondary : Theme.surface-muted;
     border-radius: Theme.radius-small;
     border-width: 1px;
     border-color: dropdown-open && interactive ? Theme.accent : Theme.border-muted;
-    
+
     animate border-color { duration: 100ms; }
-    
+
     HorizontalLayout {
         padding-left: Theme.spacing-small;
         padding-right: Theme.spacing-xsmall;
         spacing: Theme.spacing-small;
-        
+
         Rectangle {
             width: 14px;
-            
+
             StatusDot {
                 status-color: current.color;
                 pulsing: current.status == SocialStatus.NeedGroup || current.status == SocialStatus.NeedHelp;
@@ -141,7 +211,7 @@ export component SocialStatusIndicator inherits Rectangle {
                 y: (parent.height - self.height) / 2;
             }
         }
-        
+
         Text {
             text: current.name;
             color: Theme.foreground;
@@ -149,9 +219,9 @@ export component SocialStatusIndicator inherits Rectangle {
             vertical-alignment: center;
             overflow: elide;
         }
-        
+
         Rectangle { }
-        
+
         if interactive: Text {
             text: dropdown-open ? "▲" : "▼";
             color: Theme.foreground-muted;
@@ -159,7 +229,7 @@ export component SocialStatusIndicator inherits Rectangle {
             vertical-alignment: center;
         }
     }
-    
+
     touch := TouchArea {
         enabled: interactive;
         clicked => {
@@ -176,9 +246,9 @@ export component SocialStatusDropdown inherits Rectangle {
     in property <length> anchor-height: 28px;
     in-out property <bool> open: false;
     in property <SocialStatus> current-status: SocialStatusState.current-status;
-    
+
     callback status-selected(SocialStatus);
-    
+
     visible: open && SocialStatusState.enabled;
     x: anchor-x;
     y: show-above ? (anchor-y - self.height - 4px) : (anchor-y + anchor-height + 4px);
@@ -191,10 +261,10 @@ export component SocialStatusDropdown inherits Rectangle {
     drop-shadow-blur: 8px;
     drop-shadow-color: #00000040;
     drop-shadow-offset-y: 4px;
-    
+
     VerticalLayout {
         padding: 4px;
-        
+
         ScrollView {
             viewport-height: SocialStatusOptions.entries.length * 38px;
             VerticalLayout {
@@ -216,10 +286,10 @@ export component SocialStatusDropdown inherits Rectangle {
 
 export component SocialStatusDropdownOverlay inherits Rectangle {
     in-out property <bool> open: false;
-    
+
     visible: open && SocialStatusState.enabled;
     background: transparent;
-    
+
     TouchArea {
         clicked => {
             root.open = false;
@@ -230,12 +300,12 @@ export component SocialStatusDropdownOverlay inherits Rectangle {
 export component SocialStatusPanel inherits Rectangle {
     in property <bool> show-dropdown-above: false;
     in property <bool> enabled: true;
-    
+
     visible: enabled && SocialStatusState.enabled;
     width: indicator.width;
     height: indicator.height;
     background: transparent;
-    
+
     indicator := SocialStatusIndicator {
         interactive: true;
     }

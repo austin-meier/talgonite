@@ -252,20 +252,13 @@ export component ProfilePanel inherits Rectangle {
                                 image-rendering: pixelated;
                             }
                         }
+                        
 
-                        Rectangle {
-                            width: 60px;
-                            height: 18px;
-                            background: #00000030;
-                            border-radius: 4px;
-                            x: (parent.width - self.width) / 2;
-                            Text {
-                                text: "Online";
-                                font-size: 9px;
-                                color: #22c55e;
-                                horizontal-alignment: center;
-                                vertical-alignment: center;
-                            }
+                        // Status indicator below preview
+                        status-indicator := SocialStatusIndicator {
+                            interactive: data.is-self;
+                            status: data.is-self ? SocialStatusState.current-status : data.social-status;
+                            dropdown-open <=> root.status-dropdown-open;
                         }
 
                         // Boots/Greaves on bottom
@@ -300,14 +293,6 @@ export component ProfilePanel inherits Rectangle {
                             slot-data: data.eq-shield;
                             slot-id: 3;
                             is-self: data.is-self;
-                        }
-
-                        // Status indicator below preview
-                        status-indicator := SocialStatusIndicator {
-                            x: 77px; // Centered under preview (80px + 114px/2 - 120px/2)
-                            interactive: data.is-self;
-                            status: data.is-self ? SocialStatusState.current-status : data.social-status;
-                            dropdown-open <=> root.status-dropdown-open;
                         }
 
                         eq11 := EquipmentSlot {

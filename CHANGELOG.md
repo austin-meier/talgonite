@@ -1,5 +1,7 @@
 # Unreleased
 
+# Version 0.1.7 (2026-05-05)
+
 ## Message formatting
 
 Messages and profiles now correctly show any colours inside of the color blocks (`{=bred` shows 'red' in red colour). As a bonus _italic_ text (use single `*` or `_`) and **bold** (use double `*` or `__`) formatting has been added.

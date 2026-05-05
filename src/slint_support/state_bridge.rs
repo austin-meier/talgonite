@@ -700,6 +700,7 @@ pub fn apply_core_to_slint(
                 sfx_volume,
                 music_volume,
                 scale,
+                modifier_hotbar_rows_target_custom_only,
                 key_bindings,
             } => {
                 let settings_state =
@@ -717,6 +718,9 @@ pub fn apply_core_to_slint(
                 settings_state.set_sfx_volume(*sfx_volume);
                 settings_state.set_music_volume(*music_volume);
                 settings_state.set_scale(*scale);
+                settings_state.set_modifier_hotbar_rows_target_custom_only(
+                    *modifier_hotbar_rows_target_custom_only,
+                );
 
                 set_keys!(move_up);
                 set_keys!(move_down);
@@ -741,6 +745,42 @@ pub fn apply_core_to_slint(
                 set_keys!(hotbar_slot_10);
                 set_keys!(hotbar_slot_11);
                 set_keys!(hotbar_slot_12);
+                set_keys!(hotbar_slot_13);
+                set_keys!(hotbar_slot_14);
+                set_keys!(hotbar_slot_15);
+                set_keys!(hotbar_slot_16);
+                set_keys!(hotbar_slot_17);
+                set_keys!(hotbar_slot_18);
+                set_keys!(hotbar_slot_19);
+                set_keys!(hotbar_slot_20);
+                set_keys!(hotbar_slot_21);
+                set_keys!(hotbar_slot_22);
+                set_keys!(hotbar_slot_23);
+                set_keys!(hotbar_slot_24);
+                set_keys!(hotbar_slot_25);
+                set_keys!(hotbar_slot_26);
+                set_keys!(hotbar_slot_27);
+                set_keys!(hotbar_slot_28);
+                set_keys!(hotbar_slot_29);
+                set_keys!(hotbar_slot_30);
+                set_keys!(hotbar_slot_31);
+                set_keys!(hotbar_slot_32);
+                set_keys!(hotbar_slot_33);
+                set_keys!(hotbar_slot_34);
+                set_keys!(hotbar_slot_35);
+                set_keys!(hotbar_slot_36);
+                set_keys!(hotbar_slot_37);
+                set_keys!(hotbar_slot_38);
+                set_keys!(hotbar_slot_39);
+                set_keys!(hotbar_slot_40);
+                set_keys!(hotbar_slot_41);
+                set_keys!(hotbar_slot_42);
+                set_keys!(hotbar_slot_43);
+                set_keys!(hotbar_slot_44);
+                set_keys!(hotbar_slot_45);
+                set_keys!(hotbar_slot_46);
+                set_keys!(hotbar_slot_47);
+                set_keys!(hotbar_slot_48);
                 set_keys!(switch_to_inventory);
                 set_keys!(switch_to_skills);
                 set_keys!(switch_to_spells);

@@ -39,9 +39,15 @@ fn default_true() -> bool {
     true
 }
 
+fn default_modifier_hotbar_rows_target_custom_only() -> bool {
+    true
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct GameplaySettings {
     pub current_server_id: Option<u32>,
+    #[serde(default = "default_modifier_hotbar_rows_target_custom_only")]
+    pub modifier_hotbar_rows_target_custom_only: bool,
 }
 
 #[derive(Resource, serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -87,6 +93,7 @@ impl Default for Settings {
             },
             gameplay: GameplaySettings {
                 current_server_id: Some(1),
+                modifier_hotbar_rows_target_custom_only: true,
             },
             key_bindings: KeyBindings::default(),
             servers: vec![ServerEntry {
@@ -117,7 +124,10 @@ impl Settings {
 
     pub fn get_current_hotbar_panel(&self, server_id: u32, username: &str) -> i32 {
         let key = format!("{}:{}", server_id, username);
-        self.hotbars.get(&key).map(|data| data.current_panel).unwrap_or(0)
+        self.hotbars
+            .get(&key)
+            .map(|data| data.current_panel)
+            .unwrap_or(0)
     }
 
     pub fn set_current_hotbar_panel(&mut self, server_id: u32, username: &str, panel: i32) {
@@ -127,10 +137,7 @@ impl Settings {
 
     pub fn get_macros(&self, server_id: u32, username: &str) -> HashMap<String, String> {
         let key = format!("{}:{}", server_id, username);
-        self.macros
-            .get(&key)
-            .cloned()
-            .unwrap_or_default()
+        self.macros.get(&key).cloned().unwrap_or_default()
     }
 
     pub fn set_macros(&mut self, server_id: u32, username: &str, macros: HashMap<String, String>) {
@@ -157,6 +164,9 @@ impl Settings {
             sfx_volume: self.audio.sfx_volume,
             music_volume: self.audio.music_volume,
             scale: self.graphics.scale,
+            modifier_hotbar_rows_target_custom_only: self
+                .gameplay
+                .modifier_hotbar_rows_target_custom_only,
             key_bindings: (&self.key_bindings).into(),
         }
     }

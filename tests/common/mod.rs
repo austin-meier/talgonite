@@ -79,11 +79,13 @@ impl TestScene {
             },
             gameplay: talgonite::settings::GameplaySettings {
                 current_server_id: None,
+                modifier_hotbar_rows_target_custom_only: true,
             },
             key_bindings: talgonite::settings::KeyBindings::default(),
             servers: vec![],
             saved_credentials: vec![],
             hotbars: HashMap::new(),
+            macros: HashMap::new(),
         });
 
         app.insert_resource(RendererState {

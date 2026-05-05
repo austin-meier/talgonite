@@ -50,6 +50,13 @@ pub fn wire_settings_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
         });
     }
 
+    {
+        let tx = tx.clone();
+        settings_state.on_modifier_hotbar_rows_target_custom_only_changed(move |enabled| {
+            let _ = tx.send(UiToCore::ModifierHotbarRowsTargetCustomOnlyChange { enabled });
+        });
+    }
+
     // Start rebind
     {
         let slint_app_weak = slint_app.as_weak();

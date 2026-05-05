@@ -20,6 +20,102 @@ pub struct InputPumpSet;
 
 pub struct InputPlugin;
 
+const HOTBAR_SLOT_ACTIONS: [GameAction; 48] = [
+    GameAction::HotbarSlot1,
+    GameAction::HotbarSlot2,
+    GameAction::HotbarSlot3,
+    GameAction::HotbarSlot4,
+    GameAction::HotbarSlot5,
+    GameAction::HotbarSlot6,
+    GameAction::HotbarSlot7,
+    GameAction::HotbarSlot8,
+    GameAction::HotbarSlot9,
+    GameAction::HotbarSlot10,
+    GameAction::HotbarSlot11,
+    GameAction::HotbarSlot12,
+    GameAction::HotbarSlot13,
+    GameAction::HotbarSlot14,
+    GameAction::HotbarSlot15,
+    GameAction::HotbarSlot16,
+    GameAction::HotbarSlot17,
+    GameAction::HotbarSlot18,
+    GameAction::HotbarSlot19,
+    GameAction::HotbarSlot20,
+    GameAction::HotbarSlot21,
+    GameAction::HotbarSlot22,
+    GameAction::HotbarSlot23,
+    GameAction::HotbarSlot24,
+    GameAction::HotbarSlot25,
+    GameAction::HotbarSlot26,
+    GameAction::HotbarSlot27,
+    GameAction::HotbarSlot28,
+    GameAction::HotbarSlot29,
+    GameAction::HotbarSlot30,
+    GameAction::HotbarSlot31,
+    GameAction::HotbarSlot32,
+    GameAction::HotbarSlot33,
+    GameAction::HotbarSlot34,
+    GameAction::HotbarSlot35,
+    GameAction::HotbarSlot36,
+    GameAction::HotbarSlot37,
+    GameAction::HotbarSlot38,
+    GameAction::HotbarSlot39,
+    GameAction::HotbarSlot40,
+    GameAction::HotbarSlot41,
+    GameAction::HotbarSlot42,
+    GameAction::HotbarSlot43,
+    GameAction::HotbarSlot44,
+    GameAction::HotbarSlot45,
+    GameAction::HotbarSlot46,
+    GameAction::HotbarSlot47,
+    GameAction::HotbarSlot48,
+];
+
+fn hotbar_panel_category(panel: crate::ecs::hotbar::HotbarPanel) -> Option<SlotPanelType> {
+    match panel {
+        crate::ecs::hotbar::HotbarPanel::Inventory => Some(SlotPanelType::Item),
+        crate::ecs::hotbar::HotbarPanel::Skills => Some(SlotPanelType::Skill),
+        crate::ecs::hotbar::HotbarPanel::Spells => Some(SlotPanelType::Spell),
+        crate::ecs::hotbar::HotbarPanel::Hotbar1
+        | crate::ecs::hotbar::HotbarPanel::Hotbar2
+        | crate::ecs::hotbar::HotbarPanel::Hotbar3 => Some(SlotPanelType::Hotbar),
+    }
+}
+
+fn hotbar_panel_base_offset(panel_state: &crate::ecs::hotbar::HotbarPanelState) -> usize {
+    let panel = panel_state.current_panel as u8;
+    let expanded_custom = panel_state.rows != crate::ecs::hotbar::HotbarRows::One
+        && panel_state.current_panel.is_custom();
+
+    match panel {
+        0..=2 => 0,
+        3..=5 if expanded_custom => 0,
+        3..=5 => (panel - 3) as usize * 12,
+        _ => 0,
+    }
+}
+
+fn resolve_hotbar_slot_target(
+    slot_index: usize,
+    panel_state: &crate::ecs::hotbar::HotbarPanelState,
+    settings: &Settings,
+) -> Option<(SlotPanelType, usize)> {
+    let row = slot_index / 12;
+    let column = slot_index % 12;
+    let active_category = hotbar_panel_category(panel_state.current_panel)?;
+    let active_base = hotbar_panel_base_offset(panel_state);
+
+    if row == 0 {
+        return Some((active_category, active_base + column));
+    }
+
+    if settings.gameplay.modifier_hotbar_rows_target_custom_only {
+        return Some((SlotPanelType::Hotbar, row * 12 + column));
+    }
+
+    Some((active_category, active_base + (row * 12) + column))
+}
+
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InputTimer>()
@@ -119,10 +215,7 @@ impl AndroidTouchInputState {
         press.moved_too_far |= Self::pointer_moved_too_far(press.start_position, position);
     }
 
-    fn maybe_fire_long_press(
-        &mut self,
-        now: Duration,
-    ) -> Option<ResolvedPointerClickEvent> {
+    fn maybe_fire_long_press(&mut self, now: Duration) -> Option<ResolvedPointerClickEvent> {
         let press = self.active_press.as_mut()?;
 
         if press.long_press_fired || press.moved_too_far {
@@ -260,9 +353,11 @@ mod tests {
         assert_eq!(resolved.button, MouseButton::Right);
         assert_eq!(resolved.source, ClickSource::AndroidLongPress);
 
-        assert!(state
-            .maybe_fire_long_press(ANDROID_LONG_PRESS_THRESHOLD + Duration::from_millis(1))
-            .is_none());
+        assert!(
+            state
+                .maybe_fire_long_press(ANDROID_LONG_PRESS_THRESHOLD + Duration::from_millis(1))
+                .is_none()
+        );
     }
 
     #[test]
@@ -271,9 +366,11 @@ mod tests {
         state.begin_press(Duration::ZERO, (10.0, 20.0));
         state.update_press((40.0, 60.0));
 
-        assert!(state
-            .maybe_fire_long_press(ANDROID_LONG_PRESS_THRESHOLD + Duration::from_millis(1))
-            .is_none());
+        assert!(
+            state
+                .maybe_fire_long_press(ANDROID_LONG_PRESS_THRESHOLD + Duration::from_millis(1))
+                .is_none()
+        );
         assert!(state.release_press((40.0, 60.0)).is_none());
     }
 
@@ -281,11 +378,26 @@ mod tests {
     fn release_after_long_press_does_not_emit_short_press() {
         let mut state = AndroidTouchInputState::default();
         state.begin_press(Duration::ZERO, (10.0, 20.0));
-        assert!(state
-            .maybe_fire_long_press(ANDROID_LONG_PRESS_THRESHOLD + Duration::from_millis(1))
-            .is_some());
+        assert!(
+            state
+                .maybe_fire_long_press(ANDROID_LONG_PRESS_THRESHOLD + Duration::from_millis(1))
+                .is_some()
+        );
 
         assert!(state.release_press((10.0, 20.0)).is_none());
+    }
+
+    #[test]
+    fn modifier_rows_target_next_hotbar_row() {
+        let settings = Settings::default();
+        let panel_state = crate::ecs::hotbar::HotbarPanelState {
+            current_panel: crate::ecs::hotbar::HotbarPanel::Inventory,
+            rows: crate::ecs::hotbar::HotbarRows::Three,
+        };
+
+        let resolved = resolve_hotbar_slot_target(12, &panel_state, &settings);
+
+        assert_eq!(resolved, Some((SlotPanelType::Hotbar, 12)));
     }
 }
 
@@ -305,6 +417,7 @@ pub fn input_handling_system(
     mut input_timer: ResMut<InputTimer>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     unified_bindings: Res<UnifiedInputBindings>,
+    settings: Res<Settings>,
     gamepad_query: Query<&Gamepad>,
     gamepad_config: Res<GamepadConfig>,
     window: Option<Res<crate::slint_support::state_bridge::SlintWindow>>,
@@ -437,44 +550,17 @@ pub fn input_handling_system(
     }
 
     // Hotbar slot activation
-    let slot_actions = [
-        GameAction::HotbarSlot1,
-        GameAction::HotbarSlot2,
-        GameAction::HotbarSlot3,
-        GameAction::HotbarSlot4,
-        GameAction::HotbarSlot5,
-        GameAction::HotbarSlot6,
-        GameAction::HotbarSlot7,
-        GameAction::HotbarSlot8,
-        GameAction::HotbarSlot9,
-        GameAction::HotbarSlot10,
-        GameAction::HotbarSlot11,
-        GameAction::HotbarSlot12,
-    ];
-
-    for (i, action) in slot_actions.iter().enumerate() {
+    for (i, action) in HOTBAR_SLOT_ACTIONS.iter().enumerate() {
         if bindings.is_just_pressed(
             *action,
             &keyboard_input,
             Some(&gamepad_query),
             Some(&gamepad_config),
         ) {
-            let panel = hotbar_panel_state.current_panel as u8;
-            let expanded_custom = hotbar_panel_state.rows != crate::ecs::hotbar::HotbarRows::One
-                && hotbar_panel_state.current_panel.is_custom();
-            let slot_index = match panel {
-                0..=2 => i,
-                3..=5 if expanded_custom => i,
-                3..=5 => (panel - 3) as usize * 12 + i,
-                _ => continue,
-            };
-
-            let category = match panel {
-                0 => SlotPanelType::Item,
-                1 => SlotPanelType::Skill,
-                2 => SlotPanelType::Spell,
-                3..=5 => SlotPanelType::Hotbar,
-                _ => continue,
+            let Some((category, slot_index)) =
+                resolve_hotbar_slot_target(i, &hotbar_panel_state, &settings)
+            else {
+                continue;
             };
 
             match category {

@@ -2384,7 +2384,7 @@ fn handle_login_results(
         let mut macros = settings.get_macros(inner.server_id, &inner.username);
 
         if macros.is_empty() {
-            // Populate defaults for slots 12-47 (values 9-44)
+            // Populate default emote macros for ids 9-44.
             for i in 9..=44 {
                 let Ok(body_anim) = packets::types::BodyAnimationKind::try_from(i) else {
                     continue;
@@ -2393,16 +2393,13 @@ fn handle_login_results(
                 if !name.is_empty() {
                     let id = format!("MC{:04}{}", i, name);
                     macros.insert(id.clone(), format!("emote(\"{}\");", name));
-                    // slots 12-47 -> bar 1,2,3
-                    let slot_idx = i - 9 + 12; // 9->12, ..., 44->47
-                    let bar = slot_idx / 12;
-                    let slot_in_bar = slot_idx % 12;
-                    if (bar as usize) < hotbars.bars.len() {
-                        hotbars.bars[bar as usize][slot_in_bar as usize].action_id = id;
-                    }
                 }
             }
             settings.set_macros(inner.server_id, &inner.username, macros.clone());
+        }
+
+        if hotbars.is_blank() {
+            hotbars.apply_default_emote_layout();
             settings.set_hotbars(inner.server_id, &inner.username, hotbars.clone());
         }
 
@@ -2414,7 +2411,8 @@ fn handle_login_results(
         let saved_panel = settings.get_current_hotbar_panel(inner.server_id, &inner.username);
         let saved_row_count = settings.get_hotbar_row_count(inner.server_id, &inner.username);
         let mut hotbar_panel_state = crate::ecs::hotbar::HotbarPanelState::default();
-        hotbar_panel_state.current_panel = crate::ecs::hotbar::HotbarPanel::from_u8(saved_panel as u8);
+        hotbar_panel_state.current_panel =
+            crate::ecs::hotbar::HotbarPanel::from_u8(saved_panel as u8);
         hotbar_panel_state.rows = crate::ecs::hotbar::HotbarRows::from_i32(saved_row_count);
         commands.insert_resource(hotbar_panel_state);
 

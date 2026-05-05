@@ -2,6 +2,56 @@ use serde::{Deserialize, Serialize};
 
 const HOTBAR_SLOTS_PER_BAR: usize = 12;
 const DEFAULT_CUSTOM_HOTBAR_COUNT: usize = 5;
+const DEFAULT_EMOTE_HOTBAR_LAYOUT: [&str; HOTBAR_SLOTS_PER_BAR * 4] = [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "MC0009Smile",
+    "MC0010Cry",
+    "MC0011Frown",
+    "MC0012Wink",
+    "MC0013Surprise",
+    "MC0014Tongue",
+    "MC0040PuppyDog",
+    "MC0016Snore",
+    "MC0017Mouth",
+    "MC0021BlowKiss",
+    "MC0022Wave",
+    "",
+    "MC0034Silly",
+    "MC0035Cute",
+    "MC0036Yelling",
+    "MC0037Mischievous",
+    "MC0038Evil",
+    "MC0039Horror",
+    "MC0015Pleasant",
+    "MC0041StoneFaced",
+    "MC0042Tears",
+    "MC0043FiredUp",
+    "MC0044Confused",
+    "",
+    "MC0023RockOn",
+    "MC0024Peace",
+    "MC0025Stop",
+    "MC0026Ouch",
+    "MC0027Impatient",
+    "MC0028Shock",
+    "MC0029Pleasure",
+    "MC0030Love",
+    "MC0031SweatDrop",
+    "MC0032Whistle",
+    "MC0033Irritation",
+    "",
+];
 
 #[derive(Debug, Clone, Default)]
 pub struct CustomHotBarSlot {
@@ -51,7 +101,8 @@ impl<'de> Deserialize<'de> for CustomHotBars {
         }
 
         let wrapper = RawBars::deserialize(deserializer)?;
-        let bar_count = DEFAULT_CUSTOM_HOTBAR_COUNT.max(wrapper.bars.len().div_ceil(HOTBAR_SLOTS_PER_BAR));
+        let bar_count =
+            DEFAULT_CUSTOM_HOTBAR_COUNT.max(wrapper.bars.len().div_ceil(HOTBAR_SLOTS_PER_BAR));
         let mut bars = vec![vec![CustomHotBarSlot::default(); HOTBAR_SLOTS_PER_BAR]; bar_count];
         for (idx, action_id) in wrapper.bars.into_iter().enumerate() {
             let bar_idx = idx / HOTBAR_SLOTS_PER_BAR;
@@ -71,6 +122,28 @@ impl CustomHotBars {
                 vec![CustomHotBarSlot::default(); HOTBAR_SLOTS_PER_BAR];
                 DEFAULT_CUSTOM_HOTBAR_COUNT
             ],
+        }
+    }
+
+    pub fn is_blank(&self) -> bool {
+        self.bars
+            .iter()
+            .flatten()
+            .all(|slot| slot.action_id.is_empty())
+    }
+
+    pub fn apply_default_emote_layout(&mut self) {
+        for (index, action_id) in DEFAULT_EMOTE_HOTBAR_LAYOUT.iter().enumerate() {
+            let bar = index / HOTBAR_SLOTS_PER_BAR;
+            let slot = index % HOTBAR_SLOTS_PER_BAR;
+
+            if let Some(slot_ref) = self
+                .bars
+                .get_mut(bar)
+                .and_then(|bar_ref| bar_ref.get_mut(slot))
+            {
+                slot_ref.action_id = (*action_id).to_string();
+            }
         }
     }
 
@@ -98,7 +171,10 @@ impl CustomHotBars {
 
 #[cfg(test)]
 mod tests {
-    use super::{CustomHotBarSlot, CustomHotBars, DEFAULT_CUSTOM_HOTBAR_COUNT, HOTBAR_SLOTS_PER_BAR};
+    use super::{
+        CustomHotBarSlot, CustomHotBars, DEFAULT_CUSTOM_HOTBAR_COUNT, DEFAULT_EMOTE_HOTBAR_LAYOUT,
+        HOTBAR_SLOTS_PER_BAR,
+    };
 
     #[test]
     fn deserializes_legacy_three_bar_payload_into_five_bars() {
@@ -150,6 +226,29 @@ mod tests {
             .expect("bars array");
 
         assert_eq!(serialized.len(), HOTBAR_SLOTS_PER_BAR + 4);
-        assert_eq!(serialized.last().and_then(toml::Value::as_str), Some("mid-slot"));
+        assert_eq!(
+            serialized.last().and_then(toml::Value::as_str),
+            Some("mid-slot")
+        );
+    }
+
+    #[test]
+    fn applies_default_emote_layout_in_expected_slot_order() {
+        let mut bars = CustomHotBars::new();
+        bars.apply_default_emote_layout();
+
+        let toml = toml::to_string(&bars).expect("serialize default emote layout");
+        let value: toml::Value = toml::from_str(&toml).expect("parse default emote layout");
+        let serialized = value
+            .get("bars")
+            .and_then(toml::Value::as_array)
+            .expect("bars array");
+        let actual: Vec<&str> = serialized
+            .iter()
+            .map(|entry| entry.as_str().expect("bar entry string"))
+            .collect();
+
+        assert_eq!(actual, DEFAULT_EMOTE_HOTBAR_LAYOUT);
+        assert!(bars.bars[4].iter().all(|slot| slot.action_id.is_empty()));
     }
 }

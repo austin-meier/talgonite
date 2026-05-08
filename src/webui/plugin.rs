@@ -8,8 +8,9 @@ use futures_lite::future;
 use game_types::SlotPanelType;
 pub use game_ui::CursorPosition;
 use game_ui::{
-    ActionId, ChatEntryUi, Cooldown, CoreToUi, InventoryItemUi, KeyboardEdges, LoginError,
-    MenuEntryUi, SkillUi, SpellUi, UiToCore, WorldListFilter, WorldListMemberUi, WorldMapNodeUi,
+    ActionId, BoardPostUi, BoardStateUi, ChatEntryUi, Cooldown, CoreToUi, InventoryItemUi,
+    KeyboardEdges, LoginError, MenuEntryUi, SkillUi, SpellUi, UiToCore, WorldListFilter,
+    WorldListMemberUi, WorldMapNodeUi,
 };
 use packets::client;
 use packets::server::display_menu::DisplayMenuPayload;
@@ -56,6 +57,66 @@ pub struct ActiveWorldContextMenu {
     pub entries: Vec<WorldContextMenuEntry>,
 }
 
+#[derive(Resource, Default, Debug, Clone)]
+pub struct BoardSessionState {
+    pub visible: bool,
+    pub session_token: i32,
+    pub active_board_id: Option<u16>,
+    pub board_name: String,
+    pub posts: Vec<BoardPostUi>,
+    pub selected_index: i32,
+    pub loading_post_id: i32,
+    pub last_post_id: Option<i16>,
+    pub pending_request_session_token: Option<i32>,
+    pub pending_start_post_id: Option<i16>,
+}
+
+impl BoardSessionState {
+    fn invalidate(&mut self) {
+        self.session_token = self.session_token.wrapping_add(1);
+        self.visible = false;
+        self.active_board_id = None;
+        self.board_name.clear();
+        self.posts.clear();
+        self.selected_index = -1;
+        self.loading_post_id = -1;
+        self.last_post_id = None;
+        self.pending_request_session_token = None;
+        self.pending_start_post_id = None;
+    }
+
+    fn mark_request(&mut self, start_post_id: i16) {
+        self.pending_request_session_token = Some(self.session_token);
+        self.pending_start_post_id = Some(start_post_id);
+    }
+
+    fn merge_cached_post(&self, post: &mut BoardPostUi) {
+        let Some(existing_post) = self
+            .posts
+            .iter()
+            .find(|entry| entry.post_id == post.post_id)
+        else {
+            return;
+        };
+
+        if !existing_post.message.is_empty() {
+            post.message = existing_post.message.clone();
+            post.is_unread = existing_post.is_unread;
+        }
+    }
+
+    fn has_cached_message(&self, index: i32, post_id: i32) -> bool {
+        let Ok(index) = usize::try_from(index) else {
+            return false;
+        };
+
+        self.posts
+            .get(index)
+            .filter(|entry| entry.post_id == post_id)
+            .is_some_and(|entry| !entry.message.is_empty())
+    }
+}
+
 #[derive(Message)]
 pub struct UiInbound(pub UiToCore);
 
@@ -74,6 +135,7 @@ impl Plugin for UiBridgePlugin {
             .init_resource::<EquipmentState>()
             .init_resource::<PlayerProfileState>()
             .init_resource::<GroupState>()
+            .init_resource::<BoardSessionState>()
             .init_resource::<crate::ecs::hotbar::HotbarState>()
             .init_resource::<crate::ecs::hotbar::HotbarPanelState>()
             .init_resource::<ActiveMenuContext>()
@@ -163,6 +225,7 @@ struct UiStateResources<'w> {
     inv_state: Res<'w, InventoryState>,
     ability_state: Res<'w, AbilityState>,
     world_list_state: ResMut<'w, WorldListState>,
+    board_state: ResMut<'w, BoardSessionState>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -210,6 +273,7 @@ fn handle_ui_inbound_ingame(
     let inv_state = ui_state.inv_state;
     let ability_state = ui_state.ability_state;
     let mut world_list_state = ui_state.world_list_state;
+    let mut board_state = ui_state.board_state;
     let mut input_bindings = bindings.input_bindings;
     let mut unified_bindings = bindings.unified_bindings;
     let mut zoom_state = interaction_res.zoom_state;
@@ -693,7 +757,42 @@ fn handle_ui_inbound_ingame(
             UiToCore::ExitApplication => {
                 let _ = slint::quit_event_loop();
             }
+            UiToCore::MailBoardOpenPost { index, post_id } => {
+                let Ok(post_id) = i16::try_from(*post_id) else {
+                    continue;
+                };
+                let Some(board_id) = board_state.active_board_id else {
+                    continue;
+                };
+
+                board_state.selected_index = *index;
+
+                if board_state.has_cached_message(*index, i32::from(post_id)) {
+                    board_state.loading_post_id = -1;
+                    outbound.write(UiOutbound(CoreToUi::DisplayBoard(BoardStateUi {
+                        visible: board_state.visible,
+                        board_name: board_state.board_name.clone(),
+                        selected_index: board_state.selected_index,
+                        loading_post_id: board_state.loading_post_id,
+                        session_token: board_state.session_token,
+                        append: false,
+                        posts: board_state.posts.clone(),
+                    })));
+                    continue;
+                }
+
+                board_state.loading_post_id = post_id as i32;
+                outbox.send(&client::BoardInteraction::ViewPost {
+                    board_id,
+                    post_id,
+                    navigation: None,
+                });
+            }
+            UiToCore::MailBoardClose => {
+                board_state.invalidate();
+            }
             UiToCore::ReturnToMainMenu => {
+                board_state.invalidate();
                 next_state.set(AppState::MainMenu);
             }
             UiToCore::SetHotbarPanel { panel_num } => {
@@ -1616,12 +1715,14 @@ fn bridge_chat_events(
 fn bridge_session_events(
     mut session_events: MessageReader<SessionEvent>,
     mut outbound: MessageWriter<UiOutbound>,
+    outbox: Res<crate::network::PacketOutbox>,
     mut menu_ctx: ResMut<ActiveMenuContext>,
     inv_state: Res<InventoryState>,
     ability_state: Res<AbilityState>,
     mut profile_state: ResMut<PlayerProfileState>,
     mut show_profile: MessageWriter<crate::slint_plugin::ShowSelfProfileEvent>,
     mut world_list_state: ResMut<WorldListState>,
+    mut board_state: ResMut<BoardSessionState>,
     mut group_state: ResMut<GroupState>,
 ) {
     for evt in session_events.read() {
@@ -1703,6 +1804,145 @@ fn bridge_session_events(
                     }
                 }
             }
+            SessionEvent::DisplayBoard(pkt) => match pkt {
+                packets::server::DisplayBoard::PublicBoard { board }
+                | packets::server::DisplayBoard::MailBoard { board } => {
+                    let response_session_token = board_state
+                        .pending_request_session_token
+                        .unwrap_or(board_state.session_token);
+
+                    let mut posts = board
+                        .posts
+                        .iter()
+                        .map(|post| BoardPostUi {
+                            post_id: post.post_id as i32,
+                            author: post.author.clone(),
+                            month_of_year: post.month_of_year as i32,
+                            day_of_month: post.day_of_month as i32,
+                            title: post.subject.clone(),
+                            message: String::new(),
+                            is_unread: post.is_unread,
+                            can_reply: true,
+                            can_delete: false,
+                        })
+                        .collect::<Vec<_>>();
+
+                    for post in &mut posts {
+                        board_state.merge_cached_post(post);
+                    }
+
+                    board_state.visible = true;
+                    board_state.active_board_id = Some(board.board_id);
+                    board_state.board_name = board.name.clone();
+                    board_state.last_post_id = board.posts.last().map(|post| post.post_id);
+                    let append = board_state.pending_request_session_token.is_some();
+                    let initial_post_id = (!append)
+                        .then(|| {
+                            posts.first().and_then(|post| {
+                                if post.message.is_empty() {
+                                    i16::try_from(post.post_id).ok()
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                        .flatten();
+
+                    if append {
+                        board_state.posts.extend(posts.iter().cloned());
+                    } else {
+                        board_state.posts = posts.clone();
+                        if !board_state.posts.is_empty() {
+                            board_state.selected_index = 0;
+                        } else {
+                            board_state.selected_index = -1;
+                        }
+
+                        if let Some(post_id) = initial_post_id {
+                            board_state.selected_index = 0;
+                            board_state.loading_post_id = i32::from(post_id);
+                        } else {
+                            board_state.loading_post_id = -1;
+                        }
+                    }
+
+                    outbound.write(UiOutbound(CoreToUi::DisplayBoard(BoardStateUi {
+                        visible: true,
+                        board_name: board_state.board_name.clone(),
+                        selected_index: board_state.selected_index,
+                        loading_post_id: board_state.loading_post_id,
+                        session_token: response_session_token,
+                        append,
+                        posts,
+                    })));
+
+                    board_state.pending_request_session_token = None;
+                    board_state.pending_start_post_id = None;
+
+                    if let Some(post_id) = initial_post_id {
+                        outbox.send(&client::BoardInteraction::ViewPost {
+                            board_id: board.board_id,
+                            post_id,
+                            navigation: None,
+                        });
+                    }
+
+                    if board_state.visible && !board.posts.is_empty() {
+                        if let Some(last_post_id) = board_state.last_post_id {
+                            let start_post_id = last_post_id.saturating_sub(1);
+                            board_state.mark_request(start_post_id);
+                            outbox.send(&client::BoardInteraction::ViewBoard {
+                                board_id: board.board_id,
+                                start_post_id,
+                            });
+                        }
+                    }
+                }
+                packets::server::DisplayBoard::MailPost {
+                    enable_prev_btn: _,
+                    post,
+                    message,
+                }
+                | packets::server::DisplayBoard::PublicPost {
+                    enable_prev_btn: _,
+                    post,
+                    message,
+                } => {
+                    let post_id = post.post_id as i32;
+                    if let Some(index) = board_state
+                        .posts
+                        .iter()
+                        .position(|entry| entry.post_id == post_id)
+                    {
+                        let entry = &mut board_state.posts[index];
+                        entry.author = post.author.clone();
+                        entry.month_of_year = post.month_of_year as i32;
+                        entry.day_of_month = post.day_of_month as i32;
+                        entry.title = post.subject.clone();
+                        entry.message = message.clone();
+                        entry.is_unread = false;
+
+                        board_state.selected_index = index as i32;
+                        if board_state.loading_post_id == post_id {
+                            board_state.loading_post_id = -1;
+                        }
+
+                        outbound.write(UiOutbound(CoreToUi::DisplayBoard(BoardStateUi {
+                            visible: board_state.visible,
+                            board_name: board_state.board_name.clone(),
+                            selected_index: board_state.selected_index,
+                            loading_post_id: board_state.loading_post_id,
+                            session_token: board_state.session_token,
+                            append: false,
+                            posts: board_state.posts.clone(),
+                        })));
+                    }
+                }
+                packets::server::DisplayBoard::BoardList { .. }
+                | packets::server::DisplayBoard::SubmitResponse { .. }
+                | packets::server::DisplayBoard::DeleteResponse { .. }
+                | packets::server::DisplayBoard::MarkUnreadResponse { .. } => continue,
+            },
             SessionEvent::SelfProfile(pkt) => {
                 profile_state.is_self = true;
                 profile_state.entity_id = None; // Local player

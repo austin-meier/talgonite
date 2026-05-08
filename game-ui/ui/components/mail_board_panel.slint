@@ -1,0 +1,399 @@
+import { MailBoardState, MailBoardPost } from "../mail_board_state.slint";
+import { Theme } from "../theme.slint";
+import { BasePanel } from "base_panel.slint";
+import { ScrollView } from "std-widgets.slint";
+
+component MailActionButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> enabled: true;
+    in property <string> emphasis: "secondary";
+    callback clicked();
+
+    height: 30px;
+    border-radius: Theme.radius-small;
+    border-width: 1px;
+    border-color: !enabled ? Theme.border-muted : emphasis == "danger" ? Theme.border-danger : emphasis == "primary" ? Theme.border-accent : Theme.border-subtle;
+    background: !enabled ? Theme.surface-muted : emphasis == "danger" ? (touch.pressed ? Theme.surface-error : touch.has-hover ? Theme.surface-error : Theme.surface-card) : emphasis == "primary" ? (touch.pressed ? Theme.accent-muted : touch.has-hover ? Theme.accent-muted : Theme.accent-subtle) : touch.pressed ? Theme.surface-primary : touch.has-hover ? Theme.surface-secondary : Theme.surface-card;
+
+    Text {
+        text: root.label;
+        color: !root.enabled ? Theme.foreground-subtle : root.emphasis == "danger" ? Theme.danger-foreground : root.emphasis == "primary" ? Theme.foreground-strong : Theme.foreground;
+        font-size: Theme.font-size-medium;
+        font-weight: root.emphasis == "primary" ? 700 : 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := TouchArea {
+        mouse-cursor: root.enabled ? pointer : default;
+        clicked => {
+            if (root.enabled) {
+                root.clicked();
+            }
+        }
+    }
+}
+
+component MailPostRow inherits Rectangle {
+    in property <MailBoardPost> post;
+    in property <bool> selected: false;
+    callback clicked();
+
+    height: 58px;
+    border-radius: Theme.radius-small;
+    border-width: 1px;
+    border-color: selected ? Theme.accent-muted : row-touch.has-hover ? Theme.border-subtle : transparent;
+    background: selected ? Theme.accent-subtle : post.is-unread ? Theme.surface-secondary : row-touch.has-hover ? Theme.surface-secondary : Theme.surface-card;
+
+    HorizontalLayout {
+        padding-left: Theme.spacing-small;
+        padding-right: Theme.spacing-small;
+        spacing: Theme.spacing-small;
+
+        VerticalLayout {
+            padding-top: 7px;
+            padding-bottom: 7px;
+            spacing: 3px;
+
+            HorizontalLayout {
+                spacing: 6px;
+
+                Text {
+                    text: post.title;
+                    color: post.is-unread ? Theme.foreground-strong : Theme.foreground;
+                    font-size: Theme.font-size-medium;
+                    font-weight: selected ? 700 : post.is-unread ? 700 : 600;
+                    overflow: elide;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+
+                Text {
+                    width: 96px;
+                    text: post.author;
+                    color: Theme.foreground-muted;
+                    font-size: Theme.font-size-small;
+                    font-weight: 600;
+                    overflow: elide;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: post.month-of-year + "/" + post.day-of-month;
+                    color: Theme.foreground-muted;
+                    font-size: Theme.font-size-small;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: "#" + post.post-id;
+                    color: Theme.foreground-subtle;
+                    font-size: Theme.font-size-small;
+                    vertical-alignment: center;
+                }
+
+                Rectangle { }
+            }
+        }
+    }
+
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+export component MailBoardPanel inherits BasePanel {
+    title: MailBoardState.board-name;
+    visible: MailBoardState.visible;
+    width: 760px;
+    height: 540px;
+    close => {
+        MailBoardState.close();
+    }
+
+    HorizontalLayout {
+        padding: Theme.spacing-medium;
+        spacing: Theme.spacing-medium;
+
+        Rectangle {
+            width: 300px;
+            background: Theme.surface-muted;
+            border-radius: Theme.radius-medium;
+            border-width: 1px;
+            border-color: Theme.border-subtle;
+
+            VerticalLayout {
+                Rectangle {
+                    background: Theme.surface-card;
+                    border-top-left-radius: Theme.radius-medium;
+                    border-top-right-radius: Theme.radius-medium;
+
+                    HorizontalLayout {
+                        padding: Theme.spacing-small;
+                        spacing: Theme.spacing-small;
+
+                        VerticalLayout {
+                            padding-left: Theme.spacing-small;
+                            Text {
+                                text: "Posts";
+                                color: Theme.foreground-strong;
+                                font-size: Theme.font-size-medium;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        Rectangle { }
+
+                        MailActionButton {
+                            width: 74px;
+                            label: "New Post";
+                            emphasis: "primary";
+                            enabled: false;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+
+                ScrollView {
+                    VerticalLayout {
+                        padding: Theme.spacing-small;
+                        spacing: 6px;
+
+                        for post[index] in MailBoardState.posts: MailPostRow {
+                            post: post;
+                            selected: index == MailBoardState.selected-index;
+                            clicked => {
+                                MailBoardState.select-post(index);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            spacing: Theme.spacing-medium;
+
+            Rectangle {
+                height: 32px;
+                background: transparent;
+
+                if MailBoardState.selected-index >= 0: HorizontalLayout {
+                    spacing: Theme.spacing-medium;
+
+                    Text {
+                        text: "Reading";
+                        color: Theme.foreground-muted;
+                        font-size: Theme.font-size-small;
+                        vertical-alignment: center;
+                    }
+
+                    Rectangle {
+                        width: 1px;
+                        background: Theme.border-subtle;
+                    }
+
+                    Text {
+                        text: "#" + MailBoardState.posts[MailBoardState.selected-index].post-id;
+                        color: Theme.foreground;
+                        font-size: Theme.font-size-small;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                    Rectangle { }
+
+                    MailActionButton {
+                        width: 52px;
+                        label: "Reply";
+                        enabled: false;
+                    }
+
+                    MailActionButton {
+                        width: 56px;
+                        label: "Delete";
+                        emphasis: "danger";
+                        enabled: false;
+                    }
+                }
+                if MailBoardState.selected-index < 0: HorizontalLayout {
+                    spacing: Theme.spacing-small;
+
+                    Text {
+                        text: "No post selected";
+                        color: Theme.foreground-muted;
+                        font-size: Theme.font-size-small;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                    Rectangle { }
+                }
+            }
+
+            if MailBoardState.selected-index >= 0: Rectangle {
+                background: Theme.surface-muted;
+                border-radius: Theme.radius-medium;
+                border-width: 1px;
+                border-color: Theme.border-subtle;
+
+                VerticalLayout {
+                    padding: Theme.spacing-medium;
+                    spacing: Theme.spacing-medium;
+
+                    Rectangle {
+                        background: Theme.surface-card;
+                        border-radius: Theme.radius-small;
+                        border-width: 1px;
+                        border-color: Theme.border-subtle;
+
+                        VerticalLayout {
+                            padding: Theme.spacing-small;
+                            spacing: 6px;
+
+                            HorizontalLayout {
+                                spacing: Theme.spacing-small;
+
+                                Text {
+                                    width: 48px;
+                                    text: "Author";
+                                    color: Theme.foreground-subtle;
+                                    font-size: Theme.font-size-small;
+                                    font-weight: 700;
+                                }
+
+                                Text {
+                                    text: MailBoardState.posts[MailBoardState.selected-index].author;
+                                    color: Theme.foreground-strong;
+                                    font-size: Theme.font-size-medium;
+                                    font-weight: 700;
+                                    overflow: elide;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: Theme.spacing-small;
+
+                                Text {
+                                    width: 48px;
+                                    text: "Title";
+                                    color: Theme.foreground-subtle;
+                                    font-size: Theme.font-size-small;
+                                    font-weight: 700;
+                                }
+
+                                Text {
+                                    text: MailBoardState.posts[MailBoardState.selected-index].title;
+                                    color: Theme.foreground;
+                                    font-size: Theme.font-size-medium;
+                                    font-weight: 600;
+                                    overflow: elide;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: Theme.spacing-small;
+
+                                Text {
+                                    width: 48px;
+                                    text: "Date";
+                                    color: Theme.foreground-subtle;
+                                    font-size: Theme.font-size-small;
+                                    font-weight: 700;
+                                }
+
+                                Text {
+                                    text: MailBoardState.posts[MailBoardState.selected-index].month-of-year + "/" + MailBoardState.posts[MailBoardState.selected-index].day-of-month;
+                                    color: Theme.foreground-muted;
+                                    font-size: Theme.font-size-small;
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        background: Theme.surface-card;
+                        border-radius: Theme.radius-small;
+                        border-width: 1px;
+                        border-color: Theme.border-subtle;
+
+                        if MailBoardState.loading-post-id == MailBoardState.posts[MailBoardState.selected-index].post-id: VerticalLayout {
+                            padding: Theme.spacing-large;
+                            spacing: Theme.spacing-small;
+
+                            Rectangle { }
+
+                            Text {
+                                text: "Loading post...";
+                                color: Theme.foreground-strong;
+                                font-size: Theme.font-size-medium;
+                                font-weight: 700;
+                                horizontal-alignment: center;
+                            }
+
+                            Text {
+                                text: "Fetching the full message contents from the server.";
+                                color: Theme.foreground-muted;
+                                font-size: Theme.font-size-small;
+                                wrap: word-wrap;
+                                horizontal-alignment: center;
+                            }
+
+                            Rectangle { }
+                        }
+
+                        if MailBoardState.loading-post-id != MailBoardState.posts[MailBoardState.selected-index].post-id: ScrollView {
+                            VerticalLayout {
+                                padding: Theme.spacing-medium;
+                                spacing: Theme.spacing-small;
+
+                                StyledText {
+                                    text: MailBoardState.posts[MailBoardState.selected-index].message;
+                                    default-color: Theme.foreground;
+                                    default-font-size: Theme.font-size-medium;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if MailBoardState.selected-index < 0: Rectangle {
+                background: Theme.surface-muted;
+                border-radius: Theme.radius-medium;
+                border-width: 1px;
+                border-color: Theme.border-subtle;
+
+                VerticalLayout {
+                    padding: Theme.spacing-large;
+                    spacing: Theme.spacing-small;
+
+                    Text {
+                        text: "Select a post to view it.";
+                        color: Theme.foreground-strong;
+                        font-size: Theme.font-size-medium;
+                        font-weight: 700;
+                    }
+
+                    Text {
+                        text: "Posting actions are currently unavailable.";
+                        color: Theme.foreground-muted;
+                        font-size: Theme.font-size-small;
+                        wrap: word-wrap;
+                    }
+
+                    Rectangle { }
+                }
+            }
+        }
+    }
+}

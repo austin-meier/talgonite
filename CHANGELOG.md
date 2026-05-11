@@ -1,8 +1,14 @@
 # Unreleased
 
+# Version 0.1.8 (2026-05-12)
+
 ## Boards / Posts
 
 Posts are now viewable with a much more modern interface with a list of posts on the left and their content on the right.
+
+## Lots of player related visual issues fixed
+
+Thanks b0b for the detailed feedback. Players should look a lot more correct now.
 
 # Version 0.1.7 (2026-05-05)
 

@@ -1,5 +1,11 @@
 # Unreleased
 
+## More player rendering fixes
+
+- Creature form displays the creature now, the animations aren't perfect but it's fine for now
+- Invisibility is handled properly now
+- Fix wrong palette for some armor
+
 # Version 0.1.8 (2026-05-12)
 
 ## Boards / Posts

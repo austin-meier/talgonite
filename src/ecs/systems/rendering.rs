@@ -17,6 +17,14 @@ use rendering::{
     scene::players::{Gender, PlayerBatch, PlayerPieceType, PlayerSpriteKey},
 };
 
+fn player_instance_state(render_state: &PlayerRenderState) -> InstanceFlag {
+    if render_state.translucent {
+        InstanceFlag::Translucent
+    } else {
+        InstanceFlag::None
+    }
+}
+
 /// Syncs character previews for the lobby screen.
 pub fn sync_lobby_portraits(
     renderer: Res<RendererState>,
@@ -262,6 +270,7 @@ pub fn sync_players_to_renderer(
         &Direction,
         &Player,
         &EntityId,
+        &PlayerRenderState,
         Option<&TargetingHover>,
     )>,
     mut store_state: ResMut<PlayerAssetStoreState>,
@@ -269,7 +278,7 @@ pub fn sync_players_to_renderer(
 ) {
     let mut sprites_to_add = Vec::new();
     for (sprite_entity, child_of, sprite) in added_sprites.iter() {
-        if let Ok((position, direction, player, entity_id, targeting_hover)) =
+        if let Ok((position, direction, player, entity_id, render_state, targeting_hover)) =
             player_query.get(child_of.parent())
         {
             sprites_to_add.push((
@@ -280,6 +289,7 @@ pub fn sync_players_to_renderer(
                 direction,
                 player,
                 entity_id,
+                render_state,
                 targeting_hover,
             ));
         }
@@ -293,6 +303,7 @@ pub fn sync_players_to_renderer(
         direction,
         player,
         entity_id,
+        render_state,
         targeting_hover,
     ) in sprites_to_add
     {
@@ -303,6 +314,7 @@ pub fn sync_players_to_renderer(
         };
 
         let tint = targeting_hover.map(|t| t.tint).unwrap_or(Vec3::ZERO);
+        let flags = player_instance_state(render_state);
         let result = batch_state.batch.add_player_sprite(
             &shared_state.queue,
             &mut store_state.store,
@@ -313,7 +325,7 @@ pub fn sync_players_to_renderer(
             position.x,
             position.y,
             entity_id.id,
-            InstanceFlag::None,
+            flags,
             tint,
         );
 
@@ -334,6 +346,7 @@ pub fn update_player_sprites(
         &Position,
         &Direction,
         Option<&Animation>,
+        &PlayerRenderState,
         Option<&TargetingHover>,
         &Children,
         &EntityId,
@@ -344,6 +357,7 @@ pub fn update_player_sprites(
             Changed<Position>,
             Changed<Direction>,
             Changed<Animation>,
+            Changed<PlayerRenderState>,
             Changed<TargetingHover>,
         )>,
     >,
@@ -358,8 +372,15 @@ pub fn update_player_sprites(
     }
 
     for entity in to_update {
-        if let Ok((position, direction, animation, targeting_hover, children, _entity_id)) =
-            parent_query.get(entity)
+        if let Ok((
+            position,
+            direction,
+            animation,
+            render_state,
+            targeting_hover,
+            children,
+            _entity_id,
+        )) = parent_query.get(entity)
         {
             let (anim_type, frame_index) = match animation {
                 Some(anim) if anim.mode == AnimationMode::Finished => (EpfAnimationType::Idle, 0),
@@ -371,6 +392,7 @@ pub fn update_player_sprites(
             };
 
             let tint = targeting_hover.map(|t| t.tint).unwrap_or(Vec3::ZERO);
+            let flags = player_instance_state(render_state);
 
             for child_entity in children.iter() {
                 if let Ok((sprite, sprite_instance)) = children_query.get(child_entity) {
@@ -393,7 +415,7 @@ pub fn update_player_sprites(
                             sprite.color,
                             at,
                             fi,
-                            InstanceFlag::None,
+                            flags,
                             tint,
                         ) {
                             if at.is_emote() {
@@ -485,7 +507,7 @@ pub fn creature_movement_sync(
 pub fn sync_player_portrait(
     renderer: Res<RendererState>,
     game_files: Res<GameFiles>,
-    local_player_query: Query<(&Player, &Children), With<LocalPlayer>>,
+    local_player_query: Query<(&Player, &Children, Option<&CreatureSprite>), With<LocalPlayer>>,
     sprite_query: Query<&PlayerSprite>,
     mut portrait_state: ResMut<PlayerPortraitState>,
     mut player_store: ResMut<PlayerAssetStoreState>,
@@ -499,7 +521,7 @@ pub fn sync_player_portrait(
     }
 
     if !needs_update {
-        if let Some((_, children)) = local_player_query.iter().next() {
+        if let Some((_, children, _)) = local_player_query.iter().next() {
             for child in children.iter() {
                 if sprite_changed_query.get(child).is_ok() {
                     needs_update = true;
@@ -510,7 +532,12 @@ pub fn sync_player_portrait(
     }
 
     if needs_update {
-        if let Some((player, children)) = local_player_query.iter().next() {
+        if let Some((player, children, creature_sprite)) = local_player_query.iter().next() {
+            if creature_sprite.is_some() {
+                portrait_state.dirty = false;
+                return;
+            }
+
             portrait_state
                 .batch
                 .clear_and_unload(&mut player_store.store);
@@ -597,8 +624,11 @@ pub fn sync_profile_portrait(
     renderer: Res<RendererState>,
     game_files: Res<GameFiles>,
     profile_state: Res<crate::webui::plugin::PlayerProfileState>,
-    local_player_query: Query<(&Player, &Children), With<LocalPlayer>>,
-    other_players_query: Query<(&Player, &Children, &EntityId), Without<LocalPlayer>>,
+    local_player_query: Query<(&Player, &Children, Option<&CreatureSprite>), With<LocalPlayer>>,
+    other_players_query: Query<
+        (&Player, &Children, &EntityId, Option<&CreatureSprite>),
+        Without<LocalPlayer>,
+    >,
     sprite_query: Query<&PlayerSprite>,
     mut portrait_state: ResMut<crate::resources::ProfilePortraitState>,
     mut player_store: ResMut<PlayerAssetStoreState>,
@@ -608,16 +638,16 @@ pub fn sync_profile_portrait(
 
     if let Some(eid) = profile_state.entity_id {
         // Find other player by server ID
-        for (player, children, id) in other_players_query.iter() {
+        for (player, children, id, creature_sprite) in other_players_query.iter() {
             if id.id == eid {
-                target_entity = Some((player, children));
+                target_entity = Some((player, children, creature_sprite.is_some()));
                 break;
             }
         }
     } else {
         // Use local player
-        if let Some((player, children)) = local_player_query.iter().next() {
-            target_entity = Some((player, children));
+        if let Some((player, children, creature_sprite)) = local_player_query.iter().next() {
+            target_entity = Some((player, children, creature_sprite.is_some()));
         }
     }
 
@@ -628,7 +658,12 @@ pub fn sync_profile_portrait(
     }
 
     if portrait_state.dirty {
-        if let Some((player, children)) = target_entity {
+        if let Some((player, children, uses_creature_sprite)) = target_entity {
+            if uses_creature_sprite {
+                portrait_state.dirty = false;
+                return;
+            }
+
             portrait_state
                 .batch
                 .clear_and_unload(&mut player_store.store);

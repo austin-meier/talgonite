@@ -5,7 +5,8 @@ use encoding::all::WINDOWS_949;
 use encoding::{DecoderTrap, Encoding};
 use std::io::{Cursor, Read};
 
-const CREATURE_SPRITE_OFFSET: u16 = 0x8000; // matches server NETWORKING_CONSTANTS.CREATURE_SPRITE_OFFSET
+const ITEM_SPRITE_OFFSET: u16 = 0x4000;
+const CREATURE_SPRITE_OFFSET: u16 = 0x8000;
 
 #[derive(Debug, Clone)]
 pub enum DisplayArgs {
@@ -21,7 +22,7 @@ pub enum DisplayArgs {
     Dead {
         head_sprite: u16,
         body_sprite: u8, // base ghost body sprite (48 male ghost / 64 female ghost)
-        is_transparent: bool,
+        is_translucent: bool,
         face_sprite: u8,
         is_male: bool,
     },
@@ -48,7 +49,7 @@ pub enum DisplayArgs {
         overcoat_sprite: u16,
         overcoat_color: u8,
         body_color: u8,
-        is_transparent: bool,
+        is_translucent: bool,
         face_sprite: u8,
         is_male: bool,
     },
@@ -78,7 +79,7 @@ impl Default for DisplayArgs {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         }
@@ -254,7 +255,11 @@ impl DisplayArgs {
     }
 
     pub fn with_transparent(mut self, transparent: bool) -> Self {
-        if let DisplayArgs::Normal { is_transparent, .. } = &mut self {
+        if let DisplayArgs::Normal {
+            is_translucent: is_transparent,
+            ..
+        } = &mut self
+        {
             *is_transparent = transparent;
         }
         self
@@ -300,7 +305,8 @@ impl TryFromBytes for DisplayPlayer {
 
         let head_sprite_read = cursor.read_u16::<BigEndian>()?;
         let args = if head_sprite_read == u16::MAX {
-            let sprite = cursor.read_u16::<BigEndian>()? & !CREATURE_SPRITE_OFFSET;
+            let sprite =
+                cursor.read_u16::<BigEndian>()? & !CREATURE_SPRITE_OFFSET & !ITEM_SPRITE_OFFSET;
             let head_color = cursor.read_u8()?;
             let boots_color = cursor.read_u8()?;
             // skip 6 unknown bytes
@@ -331,7 +337,7 @@ impl TryFromBytes for DisplayPlayer {
             let overcoat_sprite = cursor.read_u16::<BigEndian>()?;
             let overcoat_color = cursor.read_u8()?;
             let body_color = cursor.read_u8()?;
-            let is_transparent_raw = cursor.read_u8()? != 0;
+            let is_translucent_raw = cursor.read_u8()? != 0;
             let face_sprite = cursor.read_u8()?;
 
             // Extract pants color from low 4 bits (mod 16) then reduce to base body sprite.
@@ -345,13 +351,13 @@ impl TryFromBytes for DisplayPlayer {
             let is_dead = matches!(body_sprite, 48 | 64); // ghost sprites
 
             // Hidden pattern: body none + transparency bit set -> hidden (transparency flag consumed)
-            if body_sprite == 0 && is_transparent_raw {
+            if body_sprite == 0 && !is_translucent_raw {
                 DisplayArgs::Hidden
             } else if is_dead {
                 DisplayArgs::Dead {
                     head_sprite: head_sprite_read,
                     body_sprite,
-                    is_transparent: is_transparent_raw,
+                    is_translucent: is_translucent_raw,
                     face_sprite,
                     is_male,
                 }
@@ -378,7 +384,7 @@ impl TryFromBytes for DisplayPlayer {
                     overcoat_sprite,
                     overcoat_color,
                     body_color,
-                    is_transparent: is_transparent_raw,
+                    is_translucent: is_translucent_raw,
                     face_sprite,
                     is_male,
                 }

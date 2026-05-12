@@ -158,6 +158,12 @@ pub struct ProfilePortraitState {
     pub version: u32,
 }
 
+#[derive(Resource)]
+pub struct TranslucentPlayerPassState {
+    pub color_texture: rendering::texture::Texture,
+    pub depth_texture: rendering::texture::Texture,
+}
+
 pub struct WindowSurface {
     pub width: u32,
     pub height: u32,

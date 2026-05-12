@@ -14,6 +14,7 @@ pub enum InstanceFlag {
     None = 0,
     XRay = 1,
     Hover = 2,
+    Translucent = 4,
 }
 
 #[derive(Clone)]

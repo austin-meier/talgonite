@@ -39,7 +39,7 @@ fn test_player_on_map() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         },
@@ -72,7 +72,7 @@ fn test_player_on_map() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -134,7 +134,7 @@ fn test_player_on_map_2() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         },
@@ -168,7 +168,7 @@ fn test_player_on_map_2() {
             overcoat_sprite: 332,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         },
@@ -202,7 +202,7 @@ fn test_player_on_map_2() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -290,7 +290,7 @@ fn test_player_on_map_3() {
             overcoat_sprite: 1065,
             overcoat_color: 1,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         },
@@ -324,7 +324,7 @@ fn test_player_on_map_3() {
             overcoat_sprite: 1065,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -358,7 +358,7 @@ fn test_player_on_map_3() {
             overcoat_sprite: 1065,
             overcoat_color: 0,
             body_color: 6,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -392,7 +392,7 @@ fn test_player_on_map_3() {
             overcoat_sprite: 1057,
             overcoat_color: 1,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -426,7 +426,7 @@ fn test_player_on_map_3() {
             overcoat_sprite: 1071,
             overcoat_color: 0,
             body_color: 5,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -475,7 +475,7 @@ fn test_player_on_map_4() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 5,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         },
@@ -509,7 +509,7 @@ fn test_player_on_map_4() {
             overcoat_sprite: 1013,
             overcoat_color: 1,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -543,7 +543,7 @@ fn test_player_on_map_4() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         },
@@ -594,7 +594,7 @@ fn test_player_movement() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         },
@@ -663,7 +663,7 @@ fn test_female_player_equipment() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -714,7 +714,7 @@ fn test_female_player_equipment_away() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: false,
         },
@@ -763,7 +763,7 @@ fn test_ant_wings() {
             overcoat_sprite: 0,
             overcoat_color: 0,
             body_color: 0,
-            is_transparent: false,
+            is_translucent: false,
             face_sprite: 0,
             is_male: true,
         },
@@ -776,4 +776,77 @@ fn test_ant_wings() {
 
     let png = scene.capture(48, 80);
     insta::assert_binary_snapshot!("ant_wings.png", png);
+}
+
+#[test]
+fn test_scholar_vest() {
+    let mut scene = TestScene::new();
+
+    let player_id = scene.next_entity_id();
+    scene.display_player(server::display_player::DisplayPlayer {
+        id: player_id,
+        x: 0,
+        y: 0,
+        direction: 2,
+        args: server::display_player::DisplayArgs::Normal {
+            head_sprite: 0,
+            body_sprite: 16,
+            pants_color: 0,
+            armor_sprite1: 380,
+            boots_sprite: 0,
+            armor_sprite2: 380,
+            shield_sprite: 0,
+            weapon_sprite: 0,
+            head_color: 0,
+            boots_color: 0,
+            accessory_color1: 0,
+            accessory_sprite1: 0,
+            accessory_color2: 0,
+            accessory_sprite2: 0,
+            accessory_color3: 0,
+            accessory_sprite3: 0,
+            lantern_size: 0,
+            rest_position: 0,
+            overcoat_sprite: 0,
+            overcoat_color: 0,
+            body_color: 0,
+            is_translucent: false,
+            face_sprite: 0,
+            is_male: true,
+        },
+        ..Default::default()
+    });
+
+    scene.update();
+    scene.center_camera_on_tile(-1.0, -1.0);
+    scene.update();
+
+    let png = scene.capture(48, 80);
+    insta::assert_binary_snapshot!("scholar_vest.png", png);
+}
+
+#[test]
+fn test_display_player_creature_sprite() {
+    let mut scene = TestScene::new();
+
+    let player_id = scene.next_entity_id();
+    scene.display_player(server::display_player::DisplayPlayer {
+        id: player_id,
+        x: 0,
+        y: 0,
+        direction: 2,
+        args: server::display_player::DisplayArgs::Sprite {
+            sprite: 1,
+            head_color: 0,
+            boots_color: 0,
+        },
+        ..Default::default()
+    });
+
+    scene.update();
+    scene.center_camera_on_tile(-1.0, -1.0);
+    scene.update();
+
+    let png = scene.capture(80, 96);
+    insta::assert_binary_snapshot!("display_player_creature_sprite.png", png);
 }

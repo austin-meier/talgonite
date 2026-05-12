@@ -249,6 +249,12 @@ fn spawn_display_player(
         _ => true,
     };
 
+    let is_translucent = match &player.args {
+        DisplayArgs::Normal { is_translucent, .. } => *is_translucent,
+        DisplayArgs::Dead { is_translucent, .. } => *is_translucent,
+        _ => false,
+    };
+
     let mut player_entity = commands.spawn((
         PlayerBundle {
             player: Player {
@@ -262,6 +268,7 @@ fn spawn_display_player(
             direction: Direction::from(player.direction),
             entity_id: EntityId { id: player.id },
         },
+        PlayerRenderState::from_translucent(is_translucent),
         InGameScoped,
         MapScoped,
         Hitbox::screen_space(Vec2::new(-0.25, -1.25), Vec2::new(0.25, 0.65)),
@@ -367,18 +374,13 @@ fn spawn_display_player(
             head_color,
             boots_color: _,
         } => {
-            player_entity.with_children(|parent| {
-                parent.spawn(PlayerSprite {
-                    id: *sprite,
-                    slot: PlayerPieceType::Body,
-                    color: *head_color,
-                });
-            });
+            let _ = head_color;
+            player_entity.insert(CreatureSprite { id: *sprite });
         }
         DisplayArgs::Dead {
             head_sprite,
             body_sprite,
-            is_transparent: _,
+            is_translucent: _,
             face_sprite: _,
             is_male: _,
         } => {

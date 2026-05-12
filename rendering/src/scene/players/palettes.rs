@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 
 type Archive = ArxArchive;
 
-const PALETTE_CHARS: [char; 11] = ['b', 'c', 'e', 'f', 'h', 'i', 'l', 'm', 'p', 'u', 'w'];
+const PALETTE_CHARS: [char; 9] = ['b', 'c', 'e', 'f', 'h', 'l', 'm', 'u', 'w'];
 
 #[derive(Debug, Clone)]
 pub struct PaletteLookup {

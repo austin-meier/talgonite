@@ -173,6 +173,23 @@ pub struct Player {
     pub is_male: bool,
 }
 
+#[derive(Component, Debug, Clone, Copy)]
+pub struct PlayerRenderState {
+    pub translucent: bool,
+}
+
+impl PlayerRenderState {
+    pub fn from_translucent(translucent: bool) -> Self {
+        Self { translucent }
+    }
+}
+
+impl Default for PlayerRenderState {
+    fn default() -> Self {
+        Self::from_translucent(false)
+    }
+}
+
 #[derive(Bundle)]
 pub struct ItemBundle {
     pub entity_id: EntityId,

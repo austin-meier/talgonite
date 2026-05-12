@@ -39,7 +39,7 @@ pub mod webui;
 pub use resources::{
     Camera, CreatureAssetStoreState, CreatureBatchState, EffectManagerState, ItemAssetStoreState,
     ItemBatchState, MapRendererState, PlayerAssetStoreState, PlayerBatchState, PlayerPortraitState,
-    RendererState, StorageConfig, WindowSurface,
+    RendererState, StorageConfig, TranslucentPlayerPassState, WindowSurface,
 };
 
 #[derive(Resource)]
@@ -81,7 +81,6 @@ impl Plugin for CorePlugin {
             CoreEventsPlugin,
             settings::SettingsPlugin,
             ecs::plugin::GamePlugin,
-            plugins::input::InputPlugin,
         ))
         .insert_resource(map_store::MapStore::new())
         .insert_resource(metafile_store::MetafileStore::new())
@@ -111,6 +110,7 @@ pub fn main_with_storage(storage_root: std::path::PathBuf) {
         .add_plugins(bevy::input::InputPlugin)
         .add_plugins((
             CorePlugin,
+            plugins::input::InputPlugin,
             render_plugin::GameRenderPlugin,
             session::runtime::SessionRuntimePlugin,
             plugins::installer::InstallerPlugin,

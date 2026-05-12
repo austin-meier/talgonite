@@ -72,8 +72,14 @@ var t_dye_palette: texture_2d<f32>;
 @group(2) @binding(0)
 var t_depth: texture_depth_2d;
 
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+const INSTANCE_FLAG_XRAY: u32 = 1u;
+const INSTANCE_FLAG_TRANSLUCENT: u32 = 4u;
+
+fn is_translucent_player(flags: u32) -> bool {
+    return (flags & INSTANCE_FLAG_TRANSLUCENT) != 0u;
+}
+
+fn shade_fragment(in: VertexOutput) -> vec4<f32> {
     if in.palette_offset < 0.0 {
         discard; 
     }
@@ -106,7 +112,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = length(vec2<f32>(tile_dx, tile_dy));
 
     // X-Ray effect for local player (only when xray_size > 0)
-    if (in.flags & 1u) != 0u && camera.xray_size > 0.0 {
+    if (in.flags & INSTANCE_FLAG_XRAY) != 0u && camera.xray_size > 0.0 {
         // Use screen coords to calculate player position
         let a = camera.position.x / 28.0;
         let b = camera.position.y / 14.0;
@@ -167,4 +173,25 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var out_rgb = mix(final_color.rgb, vec3<f32>(gray) * 0.6, factor);
 
     return vec4<f32>(out_rgb.rgb + camera.tint + in.tint, final_color.a);
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    if is_translucent_player(in.flags) {
+        discard;
+    }
+
+    return shade_fragment(in);
+}
+
+@fragment
+fn fs_translucent_player(in: VertexOutput) -> @location(0) vec4<f32> {
+    if !is_translucent_player(in.flags) {
+        discard;
+    }
+
+    // Compose translucent players opaquely inside the offscreen pass so paper-doll
+    // layers continue to occlude each other. The whole-player alpha is applied
+    // later during the fullscreen composite.
+    return shade_fragment(in);
 }

@@ -27,6 +27,8 @@ pub fn player_movement_system(
             &mut UnconfirmedWalks,
             &mut UnconfirmedTurns,
             Option<&MovementTween>,
+            Option<&CreatureSprite>,
+            Option<&CreatureInstance>,
         ),
         With<LocalPlayer>,
     >,
@@ -39,7 +41,16 @@ pub fn player_movement_system(
     map_collision: Option<Res<MapCollisionData>>,
     outbox: Option<Res<crate::network::PacketOutbox>>,
 ) {
-    let Ok((entity, mut position, mut facing, mut unconfirmed, mut unconfirmed_turns, tween)) = player_query.single_mut()
+    let Ok((
+        entity,
+        mut position,
+        mut facing,
+        mut unconfirmed,
+        mut unconfirmed_turns,
+        tween,
+        creature_sprite,
+        creature_instance,
+    )) = player_query.single_mut()
     else {
         return;
     };
@@ -61,6 +72,8 @@ pub fn player_movement_system(
                     &mut position,
                     &mut facing,
                     tween,
+                    creature_sprite.is_some(),
+                    creature_instance,
                     &entity_positions,
                     &mut commands,
                     collision_table.as_deref(),
@@ -113,6 +126,8 @@ fn handle_walk_request(
     position: &mut Position,
     facing: &mut Direction,
     tween: Option<&MovementTween>,
+    uses_creature_sprite: bool,
+    creature_instance: Option<&CreatureInstance>,
     entity_positions: &Query<
         (&Position, Option<&MovementTween>),
         (Or<(With<NPC>, With<Player>)>, Without<LocalPlayer>),
@@ -159,20 +174,40 @@ fn handle_walk_request(
         return None;
     }
 
-    commands.entity(entity).insert((
-        AnimationBundle::new(
+    let mut entity_commands = commands.entity(entity);
+    entity_commands.insert(MovementTween {
+        start: start_pos,
+        end: target_pos,
+        elapsed: 0.0,
+        duration: 0.5,
+    });
+
+    if uses_creature_sprite {
+        if let Some(instance) = creature_instance {
+            if let Some(walk) = instance.instance.get_animation(MpfAnimationType::Walk) {
+                if let Some(standing) = instance.instance.get_animation(MpfAnimationType::Standing)
+                {
+                    entity_commands.insert(AnimationBundle::new(
+                        AnimationMode::OneShotThenLoop {
+                            loop_anim: AnimationType::Creature(MpfAnimationType::Standing),
+                            loop_frame_count: standing.frame_count as usize,
+                            loop_frame_duration: 0.5,
+                        },
+                        AnimationType::Creature(MpfAnimationType::Walk),
+                        0.125,
+                        walk.frame_count as usize,
+                    ));
+                }
+            }
+        }
+    } else {
+        entity_commands.insert(AnimationBundle::new(
             AnimationMode::OneShot,
             AnimationType::Player(EpfAnimationType::Walk),
             0.10,
             5,
-        ),
-        MovementTween {
-            start: start_pos,
-            end: target_pos,
-            elapsed: 0.0,
-            duration: 0.5,
-        },
-    ));
+        ));
+    }
 
     Some(start_pos)
 }
@@ -186,6 +221,7 @@ pub fn entity_motion_system(
             Entity,
             &mut Direction,
             &EntityId,
+            Option<&CreatureSprite>,
             Option<&CreatureInstance>,
             Option<&Player>,
         ),
@@ -196,7 +232,9 @@ pub fn entity_motion_system(
         match event {
             EntityEvent::Walk(evt) => {
                 let mut found = false;
-                for (entity, mut direction, entity_id, instance, player) in moved_query.iter_mut() {
+                for (entity, mut direction, entity_id, creature_sprite, instance, player) in
+                    moved_query.iter_mut()
+                {
                     if entity_id.id != evt.source_id {
                         continue;
                     }
@@ -218,24 +256,27 @@ pub fn entity_motion_system(
                         duration: 0.5,
                     });
 
-                    if let Some(instance) = instance {
-                        if let Some(walk) = instance.instance.get_animation(MpfAnimationType::Walk)
-                        {
-                            if let Some(standing) =
-                                instance.instance.get_animation(MpfAnimationType::Standing)
+                    if creature_sprite.is_some() {
+                        if let Some(instance) = instance {
+                            if let Some(walk) =
+                                instance.instance.get_animation(MpfAnimationType::Walk)
                             {
-                                commands.entity(entity).insert(AnimationBundle::new(
-                                    AnimationMode::OneShotThenLoop {
-                                        loop_anim: AnimationType::Creature(
-                                            MpfAnimationType::Standing,
-                                        ),
-                                        loop_frame_count: standing.frame_count as usize,
-                                        loop_frame_duration: 0.5,
-                                    },
-                                    AnimationType::Creature(MpfAnimationType::Walk),
-                                    0.125,
-                                    walk.frame_count as usize,
-                                ));
+                                if let Some(standing) =
+                                    instance.instance.get_animation(MpfAnimationType::Standing)
+                                {
+                                    commands.entity(entity).insert(AnimationBundle::new(
+                                        AnimationMode::OneShotThenLoop {
+                                            loop_anim: AnimationType::Creature(
+                                                MpfAnimationType::Standing,
+                                            ),
+                                            loop_frame_count: standing.frame_count as usize,
+                                            loop_frame_duration: 0.5,
+                                        },
+                                        AnimationType::Creature(MpfAnimationType::Walk),
+                                        0.125,
+                                        walk.frame_count as usize,
+                                    ));
+                                }
                             }
                         }
                     } else if let Some(_player) = player {
@@ -261,7 +302,7 @@ pub fn entity_motion_system(
                 }
             }
             EntityEvent::Turn(turn) => {
-                for (_, mut direction, entity_id, _, _) in moved_query.iter_mut() {
+                for (_, mut direction, entity_id, _, _, _) in moved_query.iter_mut() {
                     if entity_id.id == turn.source_id {
                         let new_dir = Direction::from(turn.direction);
                         if *direction != new_dir {
@@ -279,7 +320,7 @@ pub fn entity_motion_system(
 /// Handles body animation events (attacks, spells, etc.)
 pub fn player_animation_start_system(
     mut entity_events: MessageReader<EntityEvent>,
-    mut players: Query<(Entity, &EntityId), With<Player>>,
+    mut players: Query<(Entity, &EntityId, Option<&CreatureSprite>), With<Player>>,
     children: Query<&Children>,
     player_sprites: Query<(
         &super::super::components::PlayerSprite,
@@ -303,8 +344,12 @@ pub fn player_animation_start_system(
         }
 
         // Handle player animations
-        for (entity, entity_id) in players.iter_mut() {
+        for (entity, entity_id, creature_sprite) in players.iter_mut() {
             if entity_id.id != anim.source_id {
+                continue;
+            }
+
+            if creature_sprite.is_some() {
                 continue;
             }
 
@@ -317,6 +362,8 @@ pub fn player_animation_start_system(
                 BodyAnimationKind::RoundHouseKick => (EpfAnimationType::LongKickAttack, 4),
                 BodyAnimationKind::Stab => (EpfAnimationType::StabAttack, 2),
                 BodyAnimationKind::DoubleStab => (EpfAnimationType::DoubleStabAttack, 2),
+                BodyAnimationKind::Swipe => (EpfAnimationType::SwipeAttack, 2),
+                BodyAnimationKind::TwoHandAtk => (EpfAnimationType::TwoHandedAttack, 4),
                 // Emote set 1
                 BodyAnimationKind::Smile => (EpfAnimationType::Smile, 1),
                 BodyAnimationKind::Cry => (EpfAnimationType::Cry, 1),
@@ -403,15 +450,28 @@ pub fn player_animation_start_system(
                 continue;
             }
 
-            let mpf_anim = match anim.kind {
-                BodyAnimationKind::Assail => {
-                    instance.instance.get_animation(MpfAnimationType::Attack)
-                }
-                _ => None,
+            let (mpf_anim, anim_speed) = match anim.kind {
+                BodyAnimationKind::Assail | BodyAnimationKind::Punch => (
+                    instance.instance.get_animation(MpfAnimationType::Attack),
+                    1.0,
+                ),
+                BodyAnimationKind::HandsUp => (
+                    instance.instance.get_animation(MpfAnimationType::Attack),
+                    2.0,
+                ),
+                BodyAnimationKind::Kick => (
+                    instance.instance.get_animation(MpfAnimationType::Attack2),
+                    1.0,
+                ),
+                BodyAnimationKind::RoundHouseKick => (
+                    instance.instance.get_animation(MpfAnimationType::Attack3),
+                    1.0,
+                ),
+                _ => Default::default(),
             };
 
             let (anim_type, frame_count) = match mpf_anim {
-                Some(a) => (MpfAnimationType::Attack, a.frame_count as usize),
+                Some(a) => (a.animation_type, a.frame_count as usize),
                 None => {
                     tracing::info!("Unhandled BodyAnimationKind for NPC: {:?}", anim.kind);
                     continue;
@@ -429,7 +489,7 @@ pub fn player_animation_start_system(
                     _ => AnimationMode::OneShot,
                 },
                 AnimationType::Creature(anim_type),
-                5.0 / anim.animation_speed as f32,
+                5.0 / anim.animation_speed as f32 * anim_speed,
                 frame_count,
             ));
         }
@@ -475,7 +535,15 @@ pub fn player_reconciliation_system(
     >,
     mut commands: Commands,
 ) {
-    let Ok((entity, entity_id, mut position, mut direction, mut unconfirmed, mut unconfirmed_turns, mut active_tween)) = player_query.single_mut()
+    let Ok((
+        entity,
+        entity_id,
+        mut position,
+        mut direction,
+        mut unconfirmed,
+        mut unconfirmed_turns,
+        mut active_tween,
+    )) = player_query.single_mut()
     else {
         return;
     };

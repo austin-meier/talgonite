@@ -1,6 +1,7 @@
 use formats::ktx2;
 use rangemap::RangeMap;
 use std::io::Read;
+use std::ops::Range;
 
 use crate::asset_record::AssetRecord;
 use crate::deferred_job::PaletteAssetJob;
@@ -103,10 +104,6 @@ impl PaletteProcessor {
                     .collect();
                 let all_lines = String::from_utf8_lossy(&buf);
 
-                if palette_name == &"palc" {
-                    tracing::info!("All lines for palc:\n{}", all_lines);
-                }
-
                 let lines = all_lines.split("\r\n").filter(|line| !line.is_empty());
 
                 let (lines, override_lines): (Vec<_>, Vec<_>) =
@@ -117,47 +114,15 @@ impl PaletteProcessor {
                     .partition(|line| line.ends_with(" -1"));
 
                 for (lines, suffix) in [(lines, ""), (male_lines, "_m"), (female_lines, "_f")] {
-                    let tree: RangeMap<u16, u16> = lines
+                    let (range_entries, single_entries): (Vec<_>, Vec<_>) = lines
                         .iter()
-                        .map(|line| {
-                            let mut parts = line
-                                .trim_end_matches(" -1")
-                                .trim_end_matches(" -2")
-                                .split_ascii_whitespace();
+                        .map(|line| parse_palette_line(line))
+                        .partition(|(range, _)| range.end - range.start > 1);
 
-                            let start = parts.next().unwrap().parse::<u16>().unwrap();
-                            let end_or_id = parts.next().unwrap().parse::<u16>().unwrap();
-
-                            match parts.next() {
-                                Some(id) => {
-                                    let id = id.parse::<u16>().unwrap();
-                                    if palette_name == &"palc" {
-                                        tracing::info!(
-                                            "Parsed line for palc with ID: start={}, end={}, id={}",
-                                            start,
-                                            end_or_id,
-                                            id,
-                                        );
-                                    }
-                                    (start..(end_or_id + 1), id)
-                                }
-                                None => {
-                                    if palette_name == &"palc" {
-                                        tracing::info!(
-                                            "Parsed line for palc without ID: entry={}, id={}",
-                                            start,
-                                            end_or_id,
-                                        );
-                                    }
-                                    (start..(start + 1), end_or_id)
-                                }
-                            }
-                        })
+                    let tree: RangeMap<u16, u16> = range_entries
+                        .into_iter()
+                        .chain(single_entries.into_iter())
                         .collect();
-
-                    if palette_name == &"palc" {
-                        tracing::info!("Constructed RangeMap for palc {:?}", tree);
-                    }
 
                     if !tree.is_empty() {
                         let tbl =
@@ -170,7 +135,6 @@ impl PaletteProcessor {
                 }
             }
 
-            println!("Building super palette for {}", palette_name);
             let mut buf: Vec<u8> = files_to_process
                 .iter()
                 .filter(|(file_name, buf)| {
@@ -216,6 +180,24 @@ impl PaletteProcessor {
         }
 
         Ok(records)
+    }
+}
+
+fn parse_palette_line(line: &str) -> (Range<u16>, u16) {
+    let mut parts = line
+        .trim_end_matches(" -1")
+        .trim_end_matches(" -2")
+        .split_ascii_whitespace();
+
+    let start = parts.next().unwrap().parse::<u16>().unwrap();
+    let end_or_id = parts.next().unwrap().parse::<u16>().unwrap();
+
+    match parts.next() {
+        Some(id) => {
+            let id = id.parse::<u16>().unwrap();
+            (start..(end_or_id + 1), id)
+        }
+        None => (start..(start + 1), end_or_id),
     }
 }
 

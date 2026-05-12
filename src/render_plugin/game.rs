@@ -3,7 +3,7 @@ use crate::slint_support::frame_exchange::{BackBufferPool, ControlMessage, Frame
 use crate::{
     Camera, CreatureAssetStoreState, CreatureBatchState, EffectManagerState, ItemAssetStoreState,
     ItemBatchState, MapRendererState, PlayerAssetStoreState, PlayerBatchState, RendererState,
-    WindowSurface, game_files,
+    TranslucentPlayerPassState, WindowSurface, game_files,
 };
 use async_std::task::block_on;
 use bevy::prelude::*;
@@ -73,6 +73,7 @@ fn init_render_managers_after_gamefiles(
     existing_items: Option<Res<ItemAssetStoreState>>,
     existing_effects: Option<Res<EffectManagerState>>,
     _existing_portrait: Option<Res<crate::resources::PlayerPortraitState>>,
+    existing_translucent_players: Option<Res<TranslucentPlayerPassState>>,
 ) {
     let (files, renderer, camera) = match (files, renderer, camera) {
         (Some(f), Some(r), Some(c)) => (f, r, c),
@@ -190,6 +191,24 @@ fn init_render_managers_after_gamefiles(
             ),
         });
     }
+
+    if existing_translucent_players.is_none() {
+        commands.insert_resource(TranslucentPlayerPassState {
+            color_texture: rendering::texture::Texture::create_render_texture(
+                &renderer.device,
+                "translucent_player_color",
+                camera.camera.camera.width as u32,
+                camera.camera.camera.height as u32,
+                wgpu::TextureFormat::Rgba8Unorm,
+            ),
+            depth_texture: rendering::texture::Texture::create_depth_texture(
+                &renderer.device,
+                camera.camera.camera.width as u32,
+                camera.camera.camera.height as u32,
+                "translucent_player_depth",
+            ),
+        });
+    }
 }
 
 fn needs_render_managers(
@@ -200,6 +219,7 @@ fn needs_render_managers(
     existing_players: Option<Res<PlayerAssetStoreState>>,
     existing_items: Option<Res<ItemAssetStoreState>>,
     existing_effects: Option<Res<EffectManagerState>>,
+    existing_translucent_players: Option<Res<TranslucentPlayerPassState>>,
 ) -> bool {
     files.is_some()
         && renderer.is_some()
@@ -207,7 +227,8 @@ fn needs_render_managers(
         && (existing_creatures.is_none()
             || existing_players.is_none()
             || existing_items.is_none()
-            || existing_effects.is_none())
+            || existing_effects.is_none()
+            || existing_translucent_players.is_none())
 }
 
 #[derive(Resource, Default)]
@@ -225,6 +246,7 @@ fn apply_pending_resize(
     mut camera: ResMut<Camera>,
     _web_ui: Option<NonSend<WebUi>>,
     mut pool: ResMut<BackBufferPool>,
+    translucent_players: Option<ResMut<TranslucentPlayerPassState>>,
 ) {
     if !pending.dirty || pending.width == 0 || pending.height == 0 {
         return;
@@ -268,6 +290,22 @@ fn apply_pending_resize(
         pool.0.push(tex);
     }
 
+        if let Some(mut translucent_players) = translucent_players {
+            translucent_players.color_texture = rendering::texture::Texture::create_render_texture(
+                &renderer_state.device,
+                "translucent_player_color",
+                pending.width,
+                pending.height,
+                wgpu::TextureFormat::Rgba8Unorm,
+            );
+            translucent_players.depth_texture = rendering::texture::Texture::create_depth_texture(
+                &renderer_state.device,
+                pending.width,
+                pending.height,
+                "translucent_player_depth",
+            );
+        }
+
     pending.dirty = false;
 }
 
@@ -280,6 +318,7 @@ fn draw_frame(
     item_batch_state: Option<Res<ItemBatchState>>,
     player_batch_state: Option<Res<PlayerBatchState>>,
     effect_manager_state: Option<Res<EffectManagerState>>,
+    translucent_player_pass_state: Option<Res<TranslucentPlayerPassState>>,
     channels: Res<FrameChannels>,
     mut pool: ResMut<BackBufferPool>,
     mut pending: ResMut<PendingResize>,
@@ -399,6 +438,65 @@ fn draw_frame(
             em.effect_manager
                 .render(&mut render_pass, &camera.camera.camera_bind_group);
         }
+    }
+
+    if let (Some(pb), Some(translucent_player_pass_state)) =
+        (&player_batch_state, &translucent_player_pass_state)
+    {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Translucent Player Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &translucent_player_pass_state.color_texture.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: wgpu::StoreOp::Store,
+                },
+                depth_slice: None,
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &translucent_player_pass_state.depth_texture.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(0.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            ..Default::default()
+        });
+        render_pass.set_stencil_reference(0);
+        render_pass.set_pipeline(&render_hardware.scene.translucent_player_pipeline);
+        render_pass.set_bind_group(1, &camera.camera.camera_bind_group, &[]);
+        pb.batch.render(&mut render_pass);
+    }
+
+    if let (Some(_), Some(translucent_player_pass_state)) =
+        (&player_batch_state, &translucent_player_pass_state)
+    {
+        let composite_bind_group = render_hardware
+            .scene
+            .create_translucent_player_composite_bind_group(
+                &render_hardware.device,
+                &translucent_player_pass_state.color_texture.view,
+                &translucent_player_pass_state.depth_texture.view,
+            );
+
+        let mut composite_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Translucent Player Composite Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+                depth_slice: None,
+            })],
+            ..Default::default()
+        });
+        composite_pass.set_pipeline(&render_hardware.scene.translucent_player_composite_pipeline);
+        composite_pass.set_bind_group(0, &composite_bind_group, &[]);
+        composite_pass.draw(0..3, 0..1);
     }
 
     render_hardware.queue.submit([encoder.finish()]);

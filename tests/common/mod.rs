@@ -4,9 +4,10 @@ use formats::game_files::ArxArchive;
 use glam::UVec2;
 use packets::server;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use talgonite::{
+use talgonite_lib::{
     Camera, PlayerBatchState, RendererState,
     app_state::AppState,
     events::{EntityEvent, MapEvent},
@@ -18,13 +19,24 @@ pub struct TestScene {
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
     _archive: ArxArchive,
-    maps_dir: String,
+    maps_dir: PathBuf,
     next_entity_id: u32,
 }
 
+fn storage_root() -> PathBuf {
+    let mut path = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
+    path.push("Talgonite");
+    let _ = std::fs::create_dir_all(&path);
+    path
+}
+
 impl TestScene {
-    pub fn new(archive_path: &str, maps_dir: &str) -> Self {
-        let archive = ArxArchive::new(archive_path).expect("Failed to open archive");
+    pub fn new() -> Self {
+        let storage_root = storage_root();
+        let storage_config = talgonite_lib::StorageConfig::new(storage_root.clone());
+        let archive = ArxArchive::new(storage_config.data_arx_path())
+            .expect("Failed to open archive");
+        let maps_dir = storage_config.server_maps_dir(1);
 
         let (device, queue) = pollster::block_on(async {
             let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
@@ -32,7 +44,7 @@ impl TestScene {
                 ..Default::default()
             });
 
-            let adapters = instance.enumerate_adapters(wgpu::Backends::all());
+            let adapters = instance.enumerate_adapters(wgpu::Backends::all()).await;
             let adapter = adapters.into_iter().next().expect("No adapters found");
 
             let (device, queue) = adapter
@@ -58,35 +70,71 @@ impl TestScene {
 
         let mut app = App::new();
         app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
-        app.add_plugins(MinimalPlugins).add_plugins((
-            talgonite::CorePlugin,
-            talgonite::render_plugin::game::RenderManagersPlugin,
+        app.insert_resource(storage_config.clone());
+        app.add_message::<talgonite_lib::slint_plugin::ShowSelfProfileEvent>();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(bevy::input::InputPlugin)
+            .add_plugins((
+            talgonite_lib::CorePlugin,
+            talgonite_lib::render_plugin::game::RenderManagersPlugin,
         ));
 
-        app.insert_resource(talgonite::game_files::GameFiles::from_archive(
+        app.insert_resource(talgonite_lib::game_files::GameFiles::from_archive(
             archive.clone(),
         ));
 
-        app.insert_resource(talgonite::settings::Settings {
-            audio: talgonite::settings::AudioSettings {
+        let runtime_settings = talgonite_lib::settings::Settings {
+            audio: talgonite_lib::settings::AudioSettings {
                 music_volume: 0.0,
                 sfx_volume: 0.0,
             },
-            graphics: talgonite::settings::GraphicsSettings {
-                xray_size: talgonite::settings::XRaySize::Off,
+            graphics: talgonite_lib::settings::GraphicsSettings {
+                xray_size: talgonite_lib::settings::XRaySize::Off,
                 scale: 2.0,
                 high_quality_scaling: true,
             },
-            gameplay: talgonite::settings::GameplaySettings {
+            gameplay: talgonite_lib::settings::GameplaySettings {
                 current_server_id: None,
                 modifier_hotbar_rows_target_custom_only: true,
             },
-            key_bindings: talgonite::settings::KeyBindings::default(),
+            key_bindings: talgonite_lib::settings::KeyBindings::default(),
             servers: vec![],
             saved_credentials: vec![],
             hotbars: HashMap::new(),
             macros: HashMap::new(),
-        });
+        };
+
+        let ui_settings = talgonite_lib::settings_types::Settings {
+            audio: talgonite_lib::settings_types::AudioSettings {
+                music_volume: 0.0,
+                sfx_volume: 0.0,
+            },
+            graphics: talgonite_lib::settings_types::GraphicsSettings {
+                xray_size: talgonite_lib::settings_types::XRaySize::Off,
+                scale: 2.0,
+                high_quality_scaling: true,
+            },
+            gameplay: talgonite_lib::settings_types::GameplaySettings {
+                current_server_id: Some(1),
+                modifier_hotbar_rows_target_custom_only: true,
+            },
+            key_bindings: talgonite_lib::settings_types::KeyBindings::default(),
+            servers: vec![],
+            saved_credentials: vec![],
+            hotbars: HashMap::new(),
+            macros: HashMap::new(),
+        };
+
+        app.insert_resource(runtime_settings);
+        app.insert_resource(ui_settings);
+        app.insert_resource(talgonite_lib::network::PacketOutbox::default());
+        app.insert_resource(talgonite_lib::ecs::interaction::HoveredEntity::default());
+        app.insert_resource(talgonite_lib::webui::plugin::PlayerProfileState::default());
+        app.insert_resource(talgonite_lib::ecs::hotbar::HotbarState::default());
+        app.insert_resource(talgonite_lib::ecs::hotbar::HotbarPanelState::default());
+        app.insert_resource(talgonite_lib::plugins::input::InputTimer::default());
+        app.insert_resource(talgonite_lib::input::GamepadConfig::default());
+        app.insert_resource(talgonite_lib::input::UnifiedInputBindings::default());
 
         app.insert_resource(RendererState {
             device: (*device).clone(),
@@ -110,7 +158,7 @@ impl TestScene {
             device,
             queue,
             _archive: archive,
-            maps_dir: maps_dir.to_string(),
+            maps_dir,
             next_entity_id: 1,
         }
     }
@@ -133,9 +181,9 @@ impl TestScene {
     }
 
     pub fn load_map(&mut self, map_id: u16, width: u8, height: u8) {
-        let map_path = format!("{}/lod{}.map", self.maps_dir, map_id);
-        let map_data =
-            std::fs::read(&map_path).unwrap_or_else(|_| panic!("Failed to load map: {}", map_path));
+        let map_path = self.maps_dir.join(format!("lod{:03}.map", map_id));
+        let map_data = std::fs::read(&map_path)
+            .unwrap_or_else(|_| panic!("Failed to load map: {}", map_path.display()));
 
         let map_info = server::MapInfo {
             map_id,
@@ -159,11 +207,11 @@ impl TestScene {
         entity_events.write(EntityEvent::DisplayPlayer(player));
     }
 
-    pub fn send_player_action(&mut self, action: talgonite::events::PlayerAction) {
+    pub fn send_player_action(&mut self, action: talgonite_lib::events::PlayerAction) {
         let mut actions = self
             .app
             .world_mut()
-            .resource_mut::<Messages<talgonite::events::PlayerAction>>();
+            .resource_mut::<Messages<talgonite_lib::events::PlayerAction>>();
         actions.write(action);
     }
 
@@ -171,14 +219,40 @@ impl TestScene {
         let mut session_events = self
             .app
             .world_mut()
-            .resource_mut::<Messages<talgonite::events::SessionEvent>>();
-        session_events.write(talgonite::events::SessionEvent::PlayerId(id));
+            .resource_mut::<Messages<talgonite_lib::events::SessionEvent>>();
+        session_events.write(talgonite_lib::events::SessionEvent::PlayerId(id));
     }
 
     pub fn next_entity_id(&mut self) -> u32 {
         let id = self.next_entity_id;
         self.next_entity_id += 1;
         id
+    }
+
+    #[allow(dead_code)]
+    pub fn player_render_state(&mut self, id: u32) -> (bool, usize) {
+        use talgonite_lib::ecs::components::{CreatureSprite, EntityId, PlayerSprite};
+
+        let world = self.app.world_mut();
+        let mut entity_query = world.query::<(Entity, &EntityId)>();
+        let entity = entity_query
+            .iter(world)
+            .find(|(_, entity_id)| entity_id.id == id)
+            .map(|(entity, _)| entity)
+            .unwrap_or_else(|| panic!("No entity found with id {}", id));
+
+        let has_creature_sprite = world.get::<CreatureSprite>(entity).is_some();
+        let mut player_sprite_children = 0;
+
+        if let Some(children) = world.get::<Children>(entity) {
+            for child in children.iter() {
+                if world.get::<PlayerSprite>(child).is_some() {
+                    player_sprite_children += 1;
+                }
+            }
+        }
+
+        (has_creature_sprite, player_sprite_children)
     }
 
     pub fn center_camera_on_tile(&mut self, x: f32, y: f32) {
@@ -274,16 +348,18 @@ impl TestScene {
             render_pass.set_pipeline(&renderer_state.scene.pipeline);
             render_pass.set_bind_group(1, &camera.camera.camera_bind_group, &[]);
 
-            if let Some(map_renderer_state) = world.get_resource::<talgonite::MapRendererState>() {
+            if let Some(map_renderer_state) =
+                world.get_resource::<talgonite_lib::MapRendererState>()
+            {
                 map_renderer_state.map_renderer.render(&mut render_pass);
             }
 
-            if let Some(item_batch_state) = world.get_resource::<talgonite::ItemBatchState>() {
+            if let Some(item_batch_state) = world.get_resource::<talgonite_lib::ItemBatchState>() {
                 item_batch_state.batch.render(&mut render_pass);
             }
 
             if let Some(creature_batch_state) =
-                world.get_resource::<talgonite::CreatureBatchState>()
+                world.get_resource::<talgonite_lib::CreatureBatchState>()
             {
                 creature_batch_state.batch.render(&mut render_pass);
             }

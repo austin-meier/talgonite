@@ -154,9 +154,10 @@ impl CameraState {
 
 pub struct Scene {
     pub pipeline: wgpu::RenderPipeline,
+    pub translucent_player_pipeline: wgpu::RenderPipeline,
+    pub translucent_player_composite_pipeline: wgpu::RenderPipeline,
+    pub translucent_player_composite_bind_group_layout: wgpu::BindGroupLayout,
     pub depth_texture: texture::Texture,
-    pub depth_bind_group_layout: wgpu::BindGroupLayout,
-    pub depth_bind_group: wgpu::BindGroup,
 }
 
 impl Scene {
@@ -230,25 +231,55 @@ impl Scene {
                 label: Some("camera_bind_group_layout"),
             });
 
-        let depth_bind_group_layout =
+        let translucent_player_composite_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Depth,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
-                label: Some("depth_bind_group_layout"),
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Depth,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Depth,
+                        },
+                        count: None,
+                    },
+                ],
+                label: Some("translucent_player_composite_bind_group_layout"),
             });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/shader.wgsl").into()),
         });
+
+        let translucent_player_composite_shader =
+            device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Translucent Player Composite Shader"),
+                source: wgpu::ShaderSource::Wgsl(
+                    include_str!("../shaders/translucent_player_composite.wgsl").into(),
+                ),
+            });
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -257,25 +288,15 @@ impl Scene {
                 immediate_size: 0,
             });
 
-        let depth_texture =
-            texture::Texture::create_depth_texture(&device, width, height, "scene_depth");
-
-        let depth_sample_view = depth_texture
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor {
-                label: Some("depth_sample_view"),
-                aspect: wgpu::TextureAspect::DepthOnly,
-                ..Default::default()
+        let translucent_player_composite_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Translucent Player Composite Pipeline Layout"),
+                bind_group_layouts: &[&translucent_player_composite_bind_group_layout],
+                immediate_size: 0,
             });
 
-        let depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &depth_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&depth_sample_view),
-            }],
-            label: Some("depth_bind_group"),
-        });
+        let depth_texture =
+            texture::Texture::create_depth_texture(&device, width, height, "scene_depth");
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             cache: None,
@@ -312,12 +333,105 @@ impl Scene {
             multiview_mask: None,
         });
 
+        let translucent_player_pipeline =
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                cache: None,
+                label: Some("Translucent Player Render Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"),
+                    buffers: &[Vertex::desc(), InstanceRaw::desc()],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("fs_translucent_player"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: texture_format,
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: texture::Texture::DEPTH_FORMAT,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::Greater,
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+            });
+
+        let translucent_player_composite_pipeline =
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                cache: None,
+                label: Some("Translucent Player Composite Pipeline"),
+                layout: Some(&translucent_player_composite_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &translucent_player_composite_shader,
+                    entry_point: Some("vs_main"),
+                    buffers: &[],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &translucent_player_composite_shader,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: texture_format,
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+            });
+
         Self {
             pipeline: render_pipeline,
+            translucent_player_pipeline,
+            translucent_player_composite_pipeline,
+            translucent_player_composite_bind_group_layout,
             depth_texture,
-            depth_bind_group_layout,
-            depth_bind_group,
         }
+    }
+
+    pub fn create_translucent_player_composite_bind_group(
+        &self,
+        device: &wgpu::Device,
+        translucent_color_view: &wgpu::TextureView,
+        translucent_depth_view: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.translucent_player_composite_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(translucent_color_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(translucent_depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&self.depth_texture.view),
+                },
+            ],
+            label: Some("translucent_player_composite_bind_group"),
+        })
     }
 
     pub fn resize_depth_texture(&mut self, device: &wgpu::Device, width: u32, height: u32) {

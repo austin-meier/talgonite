@@ -155,7 +155,7 @@ impl PlayerSpriteKey {
             | PlayerPieceType::Accessory3Bg => 'c',
             PlayerPieceType::Face | PlayerPieceType::Emote => 'm',
             PlayerPieceType::Arms => 'u',
-            PlayerPieceType::Armor => 'i',
+            PlayerPieceType::Armor => 'u',
             _ => self.slot.prefix(sprite_id),
         }
     }

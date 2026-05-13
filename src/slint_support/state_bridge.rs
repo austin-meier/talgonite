@@ -140,6 +140,30 @@ pub fn sync_lobby_portraits_to_slint(
     *last_version = portraits.version;
 }
 
+pub fn sync_character_creator_preview_to_slint(
+    preview: Res<crate::resources::CharacterCreatorPreviewState>,
+    win: Res<SlintWindow>,
+    mut last_version: Local<u32>,
+) {
+    if preview.version == *last_version {
+        return;
+    }
+
+    let Some(strong) = win.0.upgrade() else {
+        return;
+    };
+    let state = slint::ComponentHandle::global::<game_ui::slint_types::CharacterCreationState>(&strong);
+
+    if let Some(texture) = &preview.texture {
+        if let Ok(image) = texture.clone().try_into() {
+            state.set_preview(image);
+        }
+    }
+
+    *last_version = preview.version;
+}
+
+
 fn parse_color_hex(hex: &str) -> slint::Brush {
     let hex = hex.trim_start_matches('#');
     let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(208);
@@ -473,11 +497,47 @@ pub fn apply_core_to_slint(
                 lobby_state.set_saved_logins(slint::ModelRc::new(logins_model));
                 let login_state = slint::ComponentHandle::global::<crate::LoginState>(&strong);
                 login_state.set_login_error_code(login_error.clone().map_or(-1i32, |c| match c {
-                    LoginError::Response(r) => r as i32,
+                    LoginError::Response(r) => r.code() as i32,
                     _ => 0i32,
                 }));
                 if login_error.is_some() {
                     login_state.set_is_submitting(false);
+                    let char_state = slint::ComponentHandle::global::<game_ui::slint_types::CharacterCreationState>(&strong);
+                    char_state.set_is_submitting(false);
+                    let error_message = match login_error.as_ref() {
+                        Some(LoginError::Network(message)) => message.clone(),
+                        Some(LoginError::Response(packets::server::LoginMessageType::ClearNameMessage)) => {
+                            "That name is unavailable".to_string()
+                        }
+                        Some(LoginError::Response(packets::server::LoginMessageType::NameExistsOrReserved)) => {
+                            "That name already exists or contains a reserved string".to_string()
+                        }
+                        Some(LoginError::Response(packets::server::LoginMessageType::ClearPswdMessage)) => {
+                            "That password is invalid".to_string()
+                        }
+                        Some(LoginError::Response(packets::server::LoginMessageType::CharacterDoesntExist)) => {
+                            "Character does not exist".to_string()
+                        }
+                        Some(LoginError::Response(packets::server::LoginMessageType::WrongPassword)) => {
+                            "Wrong password".to_string()
+                        }
+                        Some(LoginError::Response(packets::server::LoginMessageType::Confirm)) => {
+                            "Creation failed".to_string()
+                        }
+                        Some(LoginError::Response(packets::server::LoginMessageType::Other(code))) => {
+                            format!("Creation failed (code: {})", code)
+                        }
+                        Some(LoginError::Unknown) => "Creation failed".to_string(),
+                        None => String::new(),
+                    };
+                    char_state.set_error_message(slint::SharedString::from(error_message));
+                } else {
+                    let char_state = slint::ComponentHandle::global::<game_ui::slint_types::CharacterCreationState>(&strong);
+                    char_state.set_is_submitting(false);
+                    char_state.set_error_message(slint::SharedString::from(""));
+                    // Also close the character creation window if we succeeded
+                    let login_state = slint::ComponentHandle::global::<crate::LoginState>(&strong);
+                    login_state.set_show_character_creation(false);
                 }
             }
             crate::webui::ipc::CoreToUi::EnteredGame => {

@@ -97,8 +97,8 @@ pub use light_level::{LightLevel, LightLevelKind};
 mod location;
 pub use location::Location;
 
-mod login_control;
-pub use login_control::LoginControl;
+mod server_info;
+pub use server_info::ServerInfo;
 
 mod login_message;
 pub use login_message::{LoginMessage, LoginMessageType};

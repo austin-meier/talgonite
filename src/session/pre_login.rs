@@ -2,11 +2,11 @@ use anyhow::anyhow;
 use async_std::future::timeout;
 use async_std::net::TcpStream;
 use async_std::sync::Arc;
-use std::time::Duration;
 use packets::{
     ToBytes, TryFromBytes, client,
     server::{self, LoginMessageType},
 };
+use std::time::Duration;
 
 use network::{
     DecryptedReceiver, EncryptedSender,
@@ -42,7 +42,7 @@ impl PreLoginSession {
                 Ok(Err(error)) => {
                     return Err(LoginError::Network(format!(
                         "Failed to read login prelude packet: {error}"
-                    )))
+                    )));
                 }
                 Err(_) => break,
             };
@@ -68,9 +68,7 @@ impl PreLoginSession {
                                 )
                             })?;
                         self.sender.flush().await.map_err(|_| {
-                            LoginError::Network(
-                                "Failed to flush login notice request".to_string(),
-                            )
+                            LoginError::Network("Failed to flush login notice request".to_string())
                         })?;
                     }
                 }
@@ -121,13 +119,10 @@ impl PreLoginSession {
             }
             Ok(server::Codes::LoginControl) => {
                 let mut payload = packet[1..].to_vec();
-                match server::LoginControl::try_from_bytes(
+                match server::ServerInfo::try_from_bytes(
                     &self.decrypter.decrypt(&mut payload, EncryptionType::Normal),
                 ) {
-                    Ok(control) => format!(
-                        "LoginControl(type={:?}, message={:?})",
-                        control.login_controls_type, control.message
-                    ),
+                    Ok(control) => format!("LoginControl(message={:?})", control),
                     Err(error) => format!("LoginControl(parse_error={error:?})"),
                 }
             }
@@ -136,20 +131,19 @@ impl PreLoginSession {
         }
     }
 
-    async fn read_login_message(&mut self, read_error: &str) -> Result<server::LoginMessage, LoginError> {
+    async fn read_login_message(
+        &mut self,
+        read_error: &str,
+    ) -> Result<server::LoginMessage, LoginError> {
         let mut last_packet_description = None;
 
         loop {
-            let mut packet = self
-                .decoder
-                .read()
-                .await
-                .map_err(|error| {
-                    let detail = last_packet_description
-                        .map(|packet| format!("{read_error}: {error} (last packet: {packet})"))
-                        .unwrap_or_else(|| format!("{read_error}: {error}"));
-                    LoginError::Network(detail)
-                })?;
+            let mut packet = self.decoder.read().await.map_err(|error| {
+                let detail = last_packet_description
+                    .map(|packet| format!("{read_error}: {error} (last packet: {packet})"))
+                    .unwrap_or_else(|| format!("{read_error}: {error}"));
+                LoginError::Network(detail)
+            })?;
 
             let packet_description = self.describe_prelogin_packet(&packet);
             last_packet_description = Some(packet_description.clone());
@@ -285,7 +279,9 @@ impl PreLoginSession {
             .await
             .map_err(|_| LoginError::Network("Failed to flush login packet".to_string()))?;
 
-        let login_response = self.read_login_message("Failed to read login response").await?;
+        let login_response = self
+            .read_login_message("Failed to read login response")
+            .await?;
 
         if login_response.msg_type != LoginMessageType::Confirm {
             return Err(match login_response.msg_type {
@@ -362,12 +358,9 @@ impl PreLoginSession {
             .map_err(|_| {
                 LoginError::Network("Failed to send character creation packet".to_string())
             })?;
-        self.sender
-            .flush()
-            .await
-            .map_err(|_| {
-                LoginError::Network("Failed to flush character creation packet".to_string())
-            })?;
+        self.sender.flush().await.map_err(|_| {
+            LoginError::Network("Failed to flush character creation packet".to_string())
+        })?;
 
         let initial_response = self
             .read_login_message("Failed to read character creation response")
@@ -392,12 +385,9 @@ impl PreLoginSession {
             .map_err(|_| {
                 LoginError::Network("Failed to send character finalize packet".to_string())
             })?;
-        self.sender
-            .flush()
-            .await
-            .map_err(|_| {
-                LoginError::Network("Failed to flush character finalize packet".to_string())
-            })?;
+        self.sender.flush().await.map_err(|_| {
+            LoginError::Network("Failed to flush character finalize packet".to_string())
+        })?;
 
         let finalize_response = self
             .read_login_message("Failed to read character finalize response")

@@ -8,5 +8,7 @@ pub struct HomepageRequest;
 impl ToBytes for HomepageRequest {
     const OPCODE: u8 = Codes::HomepageRequest as _;
 
-    fn write_payload(&self, _bytes: &mut Vec<u8>) {}
+    fn write_payload(&self, bytes: &mut Vec<u8>) {
+        bytes.push(1);
+    }
 }

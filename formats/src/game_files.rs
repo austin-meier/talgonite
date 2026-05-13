@@ -12,6 +12,44 @@ pub struct WebArchive {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl ArxArchive {
+    fn parallel_indexed<T, F>(job_count: usize, worker_count: usize, task: F) -> Vec<(usize, T)>
+    where
+        T: Send,
+        F: Fn(usize) -> T + Sync,
+    {
+        let task = &task;
+
+        std::thread::scope(|scope| {
+            let next_index = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let mut jobs = Vec::with_capacity(worker_count);
+
+            for _ in 0..worker_count {
+                let next_index = next_index.clone();
+                jobs.push(scope.spawn(move || {
+                    let mut local_results = Vec::new();
+
+                    loop {
+                        let index = next_index.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        if index >= job_count {
+                            break;
+                        }
+
+                        local_results.push((index, task(index)));
+                    }
+
+                    local_results
+                }));
+            }
+
+            let mut results = Vec::with_capacity(job_count);
+            for job in jobs {
+                results.extend(job.join().expect("parallel archive worker thread panicked"));
+            }
+
+            results
+        })
+    }
+
     pub fn new<P: AsRef<std::path::Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         use std::sync::Arc;
 
@@ -37,6 +75,85 @@ impl ArxArchive {
         }
 
         Err(ArxError::FileNotFound(path.to_string()))
+    }
+
+    pub fn get_files_parallel<S>(&self, paths: &[S]) -> Vec<Result<Vec<u8>, ArxError>>
+    where
+        S: AsRef<str> + Sync,
+    {
+        use jubako as jbk;
+        use libarx::{self as arx, FullBuilder};
+        use std::io::Read;
+
+        let cpu_workers = std::thread::available_parallelism()
+            .map(usize::from)
+            .unwrap_or(1)
+            .max(1);
+
+        if paths.len() <= 1 {
+            let results: Vec<_> = paths
+                .iter()
+                .map(|path| self.get_file(path.as_ref()))
+                .collect();
+
+            return results;
+        }
+
+        let lookup_worker_count = cpu_workers.min(paths.len()).max(1);
+        let found_entries = Self::parallel_indexed(paths.len(), lookup_worker_count, |index| {
+            let entry = self
+                .archive
+                .get_entry::<FullBuilder>(arx::Path::new(paths[index].as_ref()));
+
+            match entry {
+                Ok(arx::Entry::File(content_address)) => Some((index, content_address.content())),
+                _ => None,
+            }
+        })
+        .into_iter()
+        .filter_map(|(_, entry)| entry)
+        .collect::<Vec<_>>();
+
+        if found_entries.is_empty() {
+            return paths
+                .iter()
+                .map(|path| Err(ArxError::FileNotFound(path.as_ref().to_string())))
+                .collect();
+        }
+
+        let read_worker_count = (cpu_workers * 2).min(found_entries.len()).max(1);
+        let mut results = paths
+            .iter()
+            .map(|path| Err(ArxError::FileNotFound(path.as_ref().to_string())))
+            .collect::<Vec<_>>();
+
+        for (_, (path_index, result)) in
+            Self::parallel_indexed(found_entries.len(), read_worker_count, |index| {
+                let (path_index, content_address) = found_entries[index];
+                let bytes_res = self.archive.get_bytes(content_address);
+                let result =
+                    if let jbk::Result::Ok(Some(jbk::reader::MayMissPack::FOUND(Some(bytes)))) =
+                        bytes_res
+                    {
+                        let mut buf = vec![];
+                        bytes
+                            .stream()
+                            .read_to_end(&mut buf)
+                            .map(|_| buf)
+                            .map_err(Into::into)
+                    } else {
+                        Err(ArxError::FileNotFound(
+                            paths[path_index].as_ref().to_string(),
+                        ))
+                    };
+
+                (path_index, result)
+            })
+        {
+            results[path_index] = result;
+        }
+
+        results
     }
 
     pub fn get_file_or_panic(&self, path: &str) -> Vec<u8> {
@@ -161,9 +278,9 @@ pub struct GameFiles {
 impl GameFiles {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new(archive_path: &str) -> Self {
-        let archive = ArxArchive::new(archive_path).map_err(|e| {
-            format!("Failed to open game archive at '{}': {:?}", archive_path, e)
-        }).expect("Failed to open game archive");
+        let archive = ArxArchive::new(archive_path)
+            .map_err(|e| format!("Failed to open game archive at '{}': {:?}", archive_path, e))
+            .expect("Failed to open game archive");
         Self { archive }
     }
 
@@ -196,6 +313,14 @@ impl GameFiles {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn get_file(&self, path: &str) -> Option<Vec<u8>> {
         self.archive.get_file(path).ok()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn get_files_parallel<S>(&self, paths: &[S]) -> Vec<Result<Vec<u8>, ArxError>>
+    where
+        S: AsRef<str> + Sync,
+    {
+        self.archive.get_files_parallel(paths)
     }
 
     #[cfg(target_arch = "wasm32")]

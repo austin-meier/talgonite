@@ -8,7 +8,7 @@ use bincode::config::Configuration;
 use etagere::Allocation;
 use formats::epf::{AnimationDirection, EpfAnimation, EpfAnimationType};
 use glam::{Vec2, Vec3};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use tracing::error;
 use wgpu;
 
@@ -34,6 +34,7 @@ const PLAYER_Y_OFFSET: f32 = -70.0;
 
 pub struct PlayerAssetStore {
     loaded_sprites: FxHashMap<PlayerSpriteKey, LoadedSprite>,
+    missing_sprites: FxHashSet<PlayerSpriteKey>,
     atlas: TextureAtlas,
     palettes: PlayerPalettes,
     bind_group: wgpu::BindGroup,
@@ -49,6 +50,52 @@ const PLAYER_STACK_Z_RANGE: f32 = 0.003;
 pub struct PlayerBatch {
     instances: SharedInstanceBatch,
     handles: std::sync::Mutex<FxHashMap<usize, PlayerSpriteKey>>,
+}
+
+struct DecodedPlayerSprite {
+    epf_image: Vec<EpfAnimation>,
+    animations: FxHashMap<(EpfAnimationType, AnimationDirection), AnimationData>,
+}
+
+fn parallel_indexed<T, F>(job_count: usize, worker_count: usize, task: F) -> Vec<(usize, T)>
+where
+    T: Send,
+    F: Fn(usize) -> T + Sync,
+{
+    let task = &task;
+
+    std::thread::scope(|scope| {
+        let next_index = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let mut jobs = Vec::with_capacity(worker_count);
+
+        for _ in 0..worker_count {
+            let next_index = next_index.clone();
+            jobs.push(scope.spawn(move || {
+                let mut local_results = Vec::new();
+
+                loop {
+                    let index = next_index.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    if index >= job_count {
+                        break;
+                    }
+
+                    local_results.push((index, task(index)));
+                }
+
+                local_results
+            }));
+        }
+
+        let mut results = Vec::with_capacity(job_count);
+        for job in jobs {
+            results.extend(
+                job.join()
+                    .expect("parallel player sprite worker thread panicked"),
+            );
+        }
+
+        results
+    })
 }
 
 impl PlayerAssetStore {
@@ -78,6 +125,7 @@ impl PlayerAssetStore {
 
         Self {
             loaded_sprites: FxHashMap::default(),
+            missing_sprites: FxHashSet::default(),
             atlas,
             palettes,
             bind_group,
@@ -209,30 +257,114 @@ impl PlayerAssetStore {
         }
     }
 
-    fn try_load_player_sprite(
-        atlas: &mut TextureAtlas,
-        prefix: char,
-        key: &PlayerSpriteKey,
+    pub fn preload_player_sprites(
+        &mut self,
         queue: &wgpu::Queue,
         archive: &Archive,
-    ) -> anyhow::Result<LoadedSprite> {
-        let path = if key.slot == PlayerPieceType::Emote {
+        sprites: &[PlayerSpriteKey],
+    ) -> anyhow::Result<()> {
+        let mut queued = FxHashSet::default();
+        let mut sprites_to_load = Vec::new();
+
+        for sprite in sprites.iter().copied() {
+            if self.loaded_sprites.contains_key(&sprite)
+                || self.missing_sprites.contains(&sprite)
+                || !queued.insert(sprite)
+            {
+                continue;
+            }
+
+            sprites_to_load.push((sprite, Self::player_sprite_path(&sprite)));
+        }
+
+        if sprites_to_load.is_empty() {
+            return Ok(());
+        }
+
+        let paths: Vec<String> = sprites_to_load
+            .iter()
+            .map(|(_, path)| path.clone())
+            .collect();
+        let file_results = archive.get_files_parallel(&paths);
+
+        let mut bytes_by_sprite = Vec::with_capacity(file_results.len());
+
+        for ((key, _path), file_result) in sprites_to_load.into_iter().zip(file_results) {
+            match file_result {
+                Ok(bytes) => bytes_by_sprite.push((key, bytes)),
+                Err(formats::game_files::ArxError::FileNotFound(_)) => {
+                    self.missing_sprites.insert(key);
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
+
+        if bytes_by_sprite.is_empty() {
+            return Ok(());
+        }
+
+        let decode_workers = std::thread::available_parallelism()
+            .map(usize::from)
+            .unwrap_or(1)
+            .min(bytes_by_sprite.len())
+            .max(1);
+
+        let decoded_sprites = if bytes_by_sprite.len() <= 1 {
+            bytes_by_sprite
+                .iter()
+                .map(|(key, bytes)| {
+                    Self::decode_player_sprite(bytes).map(|decoded| (*key, decoded))
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?
+        } else {
+            let mut decoded = (0..bytes_by_sprite.len())
+                .map(|_| None)
+                .collect::<Vec<Option<anyhow::Result<(PlayerSpriteKey, DecodedPlayerSprite)>>>>();
+
+            for (index, result) in
+                parallel_indexed(bytes_by_sprite.len(), decode_workers, |index| {
+                    let (key, bytes) = &bytes_by_sprite[index];
+                    Self::decode_player_sprite(bytes).map(|decoded_sprite| (*key, decoded_sprite))
+                })
+            {
+                decoded[index] = Some(result);
+            }
+
+            decoded
+                .into_iter()
+                .map(|result| {
+                    result.expect("parallel player sprite decode worker did not fill result")
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?
+        };
+
+        for (key, decoded) in decoded_sprites {
+            let loaded_sprite =
+                Self::finalize_player_sprite(&mut self.atlas, &key, queue, decoded, 0);
+            self.loaded_sprites.insert(key, loaded_sprite);
+        }
+
+        Ok(())
+    }
+
+    fn player_sprite_path(key: &PlayerSpriteKey) -> String {
+        if key.slot == PlayerPieceType::Emote {
             format!("khan/em/{:03}.epfanim", key.sprite_id % 1000)
         } else {
             format!(
                 "khan/{}{}/{:03}.epfanim",
                 key.gender.char(),
-                prefix,
+                key.slot.prefix(key.sprite_id),
                 key.sprite_id % 1000
             )
-        };
-        let epf_bytes = archive.get_file(&path)?;
+        }
+    }
+
+    fn decode_player_sprite(epf_bytes: &[u8]) -> anyhow::Result<DecodedPlayerSprite> {
         let (epf_image, _) = bincode::decode_from_slice::<Vec<EpfAnimation>, Configuration>(
-            &epf_bytes,
+            epf_bytes,
             bincode::config::standard(),
         )?;
-        let mut allocations: Vec<Option<Allocation>> = Vec::new();
-        allocations.reserve(epf_image.iter().map(|a| a.image.frames.len()).sum());
 
         let mut animations = FxHashMap::default();
         let mut current_offset = 0;
@@ -246,7 +378,26 @@ impl PlayerAssetStore {
                     epf_index: i,
                 },
             );
+            current_offset += anim.image.frames.len();
+        }
 
+        Ok(DecodedPlayerSprite {
+            epf_image,
+            animations,
+        })
+    }
+
+    fn finalize_player_sprite(
+        atlas: &mut TextureAtlas,
+        key: &PlayerSpriteKey,
+        queue: &wgpu::Queue,
+        decoded: DecodedPlayerSprite,
+        ref_count: usize,
+    ) -> LoadedSprite {
+        let mut allocations: Vec<Option<Allocation>> = Vec::new();
+        allocations.reserve(decoded.epf_image.iter().map(|a| a.image.frames.len()).sum());
+
+        for anim in &decoded.epf_image {
             for frame in &anim.image.frames {
                 let w = frame.right - frame.left;
                 let h = frame.bottom - frame.top;
@@ -263,15 +414,26 @@ impl PlayerAssetStore {
                     allocations.push(None);
                 }
             }
-            current_offset += anim.image.frames.len();
         }
 
-        Ok(LoadedSprite {
-            epf_image,
+        LoadedSprite {
+            epf_image: decoded.epf_image,
             allocations,
-            animations,
-            ref_count: 1,
-        })
+            animations: decoded.animations,
+            ref_count,
+        }
+    }
+
+    fn try_load_player_sprite(
+        atlas: &mut TextureAtlas,
+        key: &PlayerSpriteKey,
+        queue: &wgpu::Queue,
+        archive: &Archive,
+    ) -> anyhow::Result<LoadedSprite> {
+        let path = Self::player_sprite_path(key);
+        let epf_bytes = archive.get_file(&path)?;
+        let decoded = Self::decode_player_sprite(&epf_bytes)?;
+        Ok(Self::finalize_player_sprite(atlas, key, queue, decoded, 1))
     }
 
     pub fn bind_group(&self) -> &wgpu::BindGroup {
@@ -322,6 +484,10 @@ impl PlayerBatch {
         flags: InstanceFlag,
         tint: Vec3,
     ) -> anyhow::Result<PlayerSpriteHandle> {
+        if store.missing_sprites.contains(&sprite) {
+            return Err(anyhow::anyhow!("Sprite marked missing: {:?}", sprite));
+        }
+
         let loaded_sprite = match store.loaded_sprites.entry(sprite) {
             std::collections::hash_map::Entry::Occupied(entry) => {
                 let s = entry.into_mut();
@@ -329,13 +495,22 @@ impl PlayerBatch {
                 s
             }
             std::collections::hash_map::Entry::Vacant(entry) => {
-                let loaded_sprite = PlayerAssetStore::try_load_player_sprite(
+                let loaded_sprite = match PlayerAssetStore::try_load_player_sprite(
                     &mut store.atlas,
-                    sprite.slot.prefix(sprite.sprite_id),
                     &sprite,
                     queue,
                     archive,
-                )?;
+                ) {
+                    Ok(loaded_sprite) => loaded_sprite,
+                    Err(error) => {
+                        if let Some(formats::game_files::ArxError::FileNotFound(_)) =
+                            error.downcast_ref::<formats::game_files::ArxError>()
+                        {
+                            store.missing_sprites.insert(sprite);
+                        }
+                        return Err(error);
+                    }
+                };
                 entry.insert(loaded_sprite)
             }
         };

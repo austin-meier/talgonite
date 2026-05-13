@@ -34,6 +34,22 @@ type Archive = ArxArchive;
 #[cfg(target_arch = "wasm32")]
 type Archive = WebArchive;
 
+#[cfg(not(target_arch = "wasm32"))]
+fn get_files_or_panic<S>(archive: &Archive, paths: &[S]) -> Vec<Vec<u8>>
+where
+    S: AsRef<str> + Sync,
+{
+    archive
+        .get_files_parallel(paths)
+        .into_iter()
+        .zip(paths.iter())
+        .map(|(result, path)| match result {
+            Ok(bytes) => bytes,
+            Err(error) => panic!("Failed to get file '{}': {}", path.as_ref(), error),
+        })
+        .collect()
+}
+
 pub struct PreparedMap {
     pub tile_texture_data: Vec<u8>,
     pub palette_texture_data: Vec<u8>,
@@ -368,9 +384,13 @@ impl MapRenderer {
         let mut wall_heights: HashMap<u16, u16> = HashMap::new();
 
         {
-            for wall in required_wall_ids {
-                let bytes = archive.get_file_or_panic(&format!("ia/stc{:05}.ktx2", wall));
+            let wall_paths: Vec<String> = required_wall_ids
+                .iter()
+                .map(|wall| format!("ia/stc{:05}.ktx2", wall))
+                .collect();
+            let wall_bytes = get_files_or_panic(archive, &wall_paths);
 
+            for (wall, bytes) in required_wall_ids.into_iter().zip(wall_bytes) {
                 let reader = ktx2::Reader::new(bytes).unwrap();
                 let info = reader.header();
                 wall_heights.insert(wall, info.pixel_height as u16);
@@ -520,10 +540,13 @@ impl MapRenderer {
             vec![0u8; (TILEMAP_PAGE_WIDTH as usize) * (TILEMAP_HEIGHT as usize)];
         let mut needed_pages_vec: Vec<usize> = needed_pages.into_iter().collect();
         needed_pages_vec.sort_unstable();
-        for page_index in needed_pages_vec {
-            let page_name = format!("seo/tilea_{:03}.ktx2", page_index);
-            let page_bytes = archive.get_file_or_panic(&page_name);
+        let tile_page_paths: Vec<String> = needed_pages_vec
+            .iter()
+            .map(|page_index| format!("seo/tilea_{:03}.ktx2", page_index))
+            .collect();
+        let tile_page_bytes = get_files_or_panic(archive, &tile_page_paths);
 
+        for (page_index, page_bytes) in needed_pages_vec.into_iter().zip(tile_page_bytes) {
             let (w, h, data) = texture::Texture::load_ktx2(&page_bytes).unwrap();
             debug_assert_eq!(w, TILEMAP_PAGE_WIDTH);
             let copy_height = h as usize;

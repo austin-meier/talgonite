@@ -25,6 +25,23 @@ fn player_instance_state(render_state: &PlayerRenderState) -> InstanceFlag {
     }
 }
 
+fn preload_player_sprite_keys(
+    renderer: &RendererState,
+    game_files: &GameFiles,
+    player_store: &mut PlayerAssetStoreState,
+    sprite_keys: &[PlayerSpriteKey],
+) {
+    if sprite_keys.is_empty() {
+        return;
+    }
+
+    let _ = player_store.store.preload_player_sprites(
+        &renderer.queue,
+        &game_files.inner().archive(),
+        sprite_keys,
+    );
+}
+
 /// Syncs character previews for the lobby screen.
 pub fn sync_lobby_portraits(
     renderer: Res<RendererState>,
@@ -130,6 +147,14 @@ pub fn sync_lobby_portraits(
                 slots.push((PlayerPieceType::Armor, preview.armor, 0)); // Assuming same sprite for now, common for basic armors
             }
 
+            let sprite_keys: Vec<PlayerSpriteKey> = slots
+                .iter()
+                .filter(|(slot, id, _)| *id != 0 || *slot == PlayerPieceType::Body)
+                .map(|(slot, id, _)| PlayerSpriteKey::for_piece(*slot, *id, gender))
+                .collect();
+
+            preload_player_sprite_keys(&renderer, &game_files, &mut player_store, &sprite_keys);
+
             for (slot, id, color) in slots {
                 if id != 0 || slot == PlayerPieceType::Body {
                     let _ = batch.add_player_sprite(
@@ -224,6 +249,14 @@ pub fn sync_character_creator_preview(
         (PlayerPieceType::Arms, portrait_state.armor_id, 0),
         (PlayerPieceType::Armor, portrait_state.armor_id, 0),
     ];
+
+    let sprite_keys: Vec<PlayerSpriteKey> = slots
+        .iter()
+        .filter(|(slot, id, _)| *id != 0 || *slot == PlayerPieceType::Body)
+        .map(|(slot, id, _)| PlayerSpriteKey::for_piece(*slot, *id, gender))
+        .collect();
+
+    preload_player_sprite_keys(&renderer, &game_files, &mut player_store, &sprite_keys);
 
     for (slot, id, color) in slots {
         if id != 0 || slot == PlayerPieceType::Body {
@@ -385,6 +418,20 @@ pub fn sync_players_to_renderer(
             ));
         }
     }
+
+    let sprite_keys: Vec<PlayerSpriteKey> = sprites_to_add
+        .iter()
+        .map(|(_, _, sprite, _, _, player, _, _, _)| {
+            let gender = if player.is_male {
+                Gender::Male
+            } else {
+                Gender::Female
+            };
+            PlayerSpriteKey::for_piece(sprite.slot, sprite.id, gender)
+        })
+        .collect();
+
+    preload_player_sprite_keys(&shared_state, &game_files, &mut store_state, &sprite_keys);
 
     for (
         sprite_entity,
@@ -634,6 +681,10 @@ pub fn sync_player_portrait(
                 .clear_and_unload(&mut player_store.store);
 
             let sprites = collect_player_sprites(player, children, &sprite_query);
+            let sprite_keys: Vec<PlayerSpriteKey> = sprites.iter().map(|(key, _)| *key).collect();
+
+            preload_player_sprite_keys(&renderer, &game_files, &mut player_store, &sprite_keys);
+
             for (key, color) in sprites {
                 let _ = portrait_state.batch.add_player_sprite(
                     &renderer.queue,
@@ -760,6 +811,10 @@ pub fn sync_profile_portrait(
                 .clear_and_unload(&mut player_store.store);
 
             let sprites = collect_player_sprites(player, children, &sprite_query);
+            let sprite_keys: Vec<PlayerSpriteKey> = sprites.iter().map(|(key, _)| *key).collect();
+
+            preload_player_sprite_keys(&renderer, &game_files, &mut player_store, &sprite_keys);
+
             for (key, color) in sprites {
                 let _ = portrait_state.batch.add_player_sprite(
                     &renderer.queue,

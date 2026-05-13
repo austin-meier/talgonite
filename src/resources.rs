@@ -3,6 +3,8 @@ use rendering::scene::map::renderer::MapRenderer;
 use rendering::scene::{CameraState, EffectManager, Scene, creatures, items, players};
 use wgpu;
 
+use std::ops::{Deref, DerefMut};
+
 #[derive(Resource, Default)]
 pub struct PlayerAttributes {
     pub current_hp: u32,
@@ -143,7 +145,13 @@ pub struct LobbyPortraits {
 }
 
 #[derive(Resource)]
-pub struct PlayerPortraitState {
+pub struct LobbyPortraitRenderer {
+    pub batch: players::PlayerBatch,
+    pub depth_texture: rendering::texture::Texture,
+    pub camera: CameraState,
+}
+
+pub struct PortraitRenderTarget {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
     pub depth_texture: rendering::texture::Texture,
@@ -154,14 +162,120 @@ pub struct PlayerPortraitState {
 }
 
 #[derive(Resource)]
+pub struct PlayerPortraitState {
+    pub target: PortraitRenderTarget,
+}
+
+#[derive(Resource)]
 pub struct ProfilePortraitState {
-    pub texture: wgpu::Texture,
-    pub view: wgpu::TextureView,
-    pub depth_texture: rendering::texture::Texture,
-    pub batch: players::PlayerBatch,
-    pub camera: CameraState,
-    pub dirty: bool,
-    pub version: u32,
+    pub target: PortraitRenderTarget,
+}
+
+impl PortraitRenderTarget {
+    pub fn new(
+        renderer: &RendererState,
+        store: &players::PlayerAssetStore,
+        label: &str,
+        size: u32,
+        camera_offset_y: f32,
+    ) -> Self {
+        let color_label = format!("{label}_color");
+        let depth_label = format!("{label}_depth");
+        let texture = rendering::texture::Texture::create_render_texture(
+            &renderer.device,
+            &color_label,
+            size,
+            size,
+            wgpu::TextureFormat::Rgba8Unorm,
+        );
+        let depth_texture = rendering::texture::Texture::create_depth_texture(
+            &renderer.device,
+            size,
+            size,
+            &depth_label,
+        );
+        let mut camera =
+            rendering::scene::CameraState::new(glam::UVec2::new(size, size), &renderer.device, 1.0);
+        camera.set_screen_offset(&renderer.queue, 0.0, camera_offset_y);
+
+        Self {
+            texture: texture.texture,
+            view: texture.view,
+            depth_texture,
+            batch: players::PlayerBatch::new(&renderer.device, store),
+            camera,
+            dirty: true,
+            version: 0,
+        }
+    }
+}
+
+impl PlayerPortraitState {
+    pub fn new(renderer: &RendererState, store: &players::PlayerAssetStore) -> Self {
+        Self {
+            target: PortraitRenderTarget::new(renderer, store, "player_portrait", 64, -42.0),
+        }
+    }
+}
+
+impl ProfilePortraitState {
+    pub fn new(renderer: &RendererState, store: &players::PlayerAssetStore) -> Self {
+        Self {
+            target: PortraitRenderTarget::new(renderer, store, "profile_portrait", 128, -32.0),
+        }
+    }
+}
+
+impl LobbyPortraitRenderer {
+    pub fn new(renderer: &RendererState, store: &players::PlayerAssetStore) -> Self {
+        let portrait_size = 64;
+        let depth_texture = rendering::texture::Texture::create_depth_texture(
+            &renderer.device,
+            portrait_size,
+            portrait_size,
+            "lobby_portrait_depth",
+        );
+        let mut camera = rendering::scene::CameraState::new(
+            glam::UVec2::new(portrait_size, portrait_size),
+            &renderer.device,
+            1.0,
+        );
+        camera.set_screen_offset(&renderer.queue, 0.0, -42.0);
+
+        Self {
+            batch: players::PlayerBatch::new(&renderer.device, store),
+            depth_texture,
+            camera,
+        }
+    }
+}
+
+impl Deref for PlayerPortraitState {
+    type Target = PortraitRenderTarget;
+
+    fn deref(&self) -> &Self::Target {
+        &self.target
+    }
+}
+
+impl DerefMut for PlayerPortraitState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.target
+    }
+}
+
+impl Deref for ProfilePortraitState {
+    type Target = PortraitRenderTarget;
+
+    fn deref(&self) -> &Self::Target {
+        &self.target
+    }
+}
+
+impl DerefMut for ProfilePortraitState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.target
+    }
 }
 
 #[derive(Resource)]
@@ -172,7 +286,7 @@ pub struct TranslucentPlayerPassState {
 
 #[derive(Resource)]
 pub struct CharacterCreatorPreviewState {
-    pub texture: Option<wgpu::Texture>,
+    pub target: Option<PortraitRenderTarget>,
     pub gender: u8,
     pub hair_style: u8,
     pub hair_color: u8,
@@ -184,13 +298,41 @@ pub struct CharacterCreatorPreviewState {
 impl Default for CharacterCreatorPreviewState {
     fn default() -> Self {
         Self {
-            texture: None,
+            target: None,
             gender: 1,
             hair_style: 0,
             hair_color: 0,
             armor_id: 1,
             dirty: true,
             version: 0,
+        }
+    }
+}
+
+impl CharacterCreatorPreviewState {
+    pub fn with_target(
+        renderer: &RendererState,
+        store: &players::PlayerAssetStore,
+        gender: u8,
+        hair_style: u8,
+        hair_color: u8,
+        armor_id: u16,
+        version: u32,
+    ) -> Self {
+        Self {
+            target: Some(PortraitRenderTarget::new(
+                renderer,
+                store,
+                "character_creator_portrait",
+                64,
+                -42.0,
+            )),
+            gender,
+            hair_style,
+            hair_color,
+            armor_id,
+            dirty: true,
+            version,
         }
     }
 }

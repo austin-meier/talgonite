@@ -41,6 +41,7 @@ impl Plugin for GamePlugin {
                     systems::sync_character_creator_preview,
                 )
                     .run_if(in_state(crate::app_state::AppState::MainMenu))
+                    .run_if(resource_exists::<crate::resources::LobbyPortraitRenderer>)
                     .run_if(resource_exists::<crate::PlayerAssetStoreState>)
                     .run_if(resource_exists::<crate::RendererState>)
                     .run_if(resource_exists::<crate::game_files::GameFiles>),

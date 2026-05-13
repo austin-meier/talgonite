@@ -243,16 +243,10 @@ export component ProfilePanel inherits Rectangle {
                             clip: true;
                             background: #00000020;
                             border-radius: 4px;
-                            Image {
-                                width: data.preview.width * root.preview-zoom * 1px;
-                                height: data.preview.height * root.preview-zoom * 1px;
-                                x: (parent.width - self.width) / 2;
-                                y: (parent.height - self.height) / 2;
-                                source: data.preview;
-                                image-rendering: pixelated;
+                            Icon {
+                                icon: data.preview;
                             }
                         }
-                        
 
                         // Status indicator below preview
                         status-indicator := SocialStatusIndicator {

@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use packets::server::EquipmentSlot;
 
 use crate::slint_support::state_bridge::{u8_to_social_status, SlintAssetLoaderRes, SlintWindow};
-use crate::{EquipmentSlotData, GameState, LegendMarkData, ProfileData, RendererState};
+use crate::{EquipmentSlotData, GameState, LegendMarkData, ProfileData};
 
 /// Event emitted when the player wants to show a profile panel
 #[derive(Debug, Clone, Message)]
@@ -61,8 +61,7 @@ pub fn sync_profile_to_slint(
     game_files: Res<crate::game_files::GameFiles>,
     eq_state: Res<crate::webui::plugin::EquipmentState>,
     profile_state: Res<crate::webui::plugin::PlayerProfileState>,
-    mut portrait_state: ResMut<crate::resources::ProfilePortraitState>,
-    renderer: Res<RendererState>,
+    portrait_state: Res<crate::resources::ProfilePortraitState>,
     mut last_portrait_version: Local<u32>,
 ) {
     let Some(strong) = win.0.upgrade() else {
@@ -72,19 +71,7 @@ pub fn sync_profile_to_slint(
 
     let mut portrait_image = None;
     if portrait_state.version != *last_portrait_version {
-        let profile_size = 128;
-        let next_texture = rendering::texture::Texture::create_render_texture(
-            &renderer.device,
-            "profile_portrait",
-            profile_size,
-            profile_size,
-            wgpu::TextureFormat::Rgba8Unorm,
-        );
-
-        let old_texture = std::mem::replace(&mut portrait_state.texture, next_texture.texture);
-        portrait_state.view = next_texture.view;
-
-        if let Ok(image) = old_texture.try_into() {
+        if let Ok(image) = portrait_state.texture.clone().try_into() {
             portrait_image = Some(image);
         }
         *last_portrait_version = portrait_state.version;

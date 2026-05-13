@@ -1,6 +1,6 @@
 use crate::rich_text::RichText;
 use crate::{
-    resources::{PlayerPortraitState, RendererState, ZoomState},
+    resources::{PlayerPortraitState, ZoomState},
     slint_support::assets::SlintAssetLoader,
 };
 use bevy::prelude::*;
@@ -53,10 +53,9 @@ fn macro_display_name(action_id: &str) -> String {
 }
 
 pub fn sync_portrait_to_slint(
-    mut portrait: ResMut<PlayerPortraitState>,
+    portrait: Res<PlayerPortraitState>,
     win: Res<SlintWindow>,
     mut last_version: Local<u32>,
-    renderer: Res<RendererState>,
 ) {
     if portrait.version == *last_version {
         return;
@@ -67,19 +66,7 @@ pub fn sync_portrait_to_slint(
     };
     let game_state = slint::ComponentHandle::global::<crate::GameState>(&strong);
 
-    let portrait_size = 64;
-    let next_texture = rendering::texture::Texture::create_render_texture(
-        &renderer.device,
-        "player_portrait",
-        portrait_size,
-        portrait_size,
-        wgpu::TextureFormat::Rgba8Unorm,
-    );
-
-    let old_texture = std::mem::replace(&mut portrait.texture, next_texture.texture);
-    portrait.view = next_texture.view;
-
-    if let Ok(image) = old_texture.try_into() {
+    if let Ok(image) = portrait.texture.clone().try_into() {
         game_state.set_player_portrait(image);
     }
 
@@ -154,8 +141,8 @@ pub fn sync_character_creator_preview_to_slint(
     };
     let state = slint::ComponentHandle::global::<game_ui::slint_types::CharacterCreationState>(&strong);
 
-    if let Some(texture) = &preview.texture {
-        if let Ok(image) = texture.clone().try_into() {
+    if let Some(target) = preview.target.as_ref() {
+        if let Ok(image) = target.texture.clone().try_into() {
             state.set_preview(image);
         }
     }

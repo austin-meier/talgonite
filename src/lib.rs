@@ -39,7 +39,8 @@ pub mod webui;
 pub use resources::{
     Camera, CreatureAssetStoreState, CreatureBatchState, EffectManagerState, ItemAssetStoreState,
     ItemBatchState, MapRendererState, PlayerAssetStoreState, PlayerBatchState, PlayerPortraitState,
-    RendererState, StorageConfig, TranslucentPlayerPassState, WindowSurface,
+    PortraitRenderTarget, RendererState, StorageConfig, TranslucentPlayerPassState,
+    WindowSurface,
 };
 
 #[derive(Resource)]

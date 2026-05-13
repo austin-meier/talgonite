@@ -73,6 +73,7 @@ fn init_render_managers_after_gamefiles(
     existing_items: Option<Res<ItemAssetStoreState>>,
     existing_effects: Option<Res<EffectManagerState>>,
     _existing_portrait: Option<Res<crate::resources::PlayerPortraitState>>,
+    existing_character_preview: Option<Res<crate::resources::CharacterCreatorPreviewState>>,
     existing_translucent_players: Option<Res<TranslucentPlayerPassState>>,
 ) {
     let (files, renderer, camera) = match (files, renderer, camera) {
@@ -99,75 +100,31 @@ fn init_render_managers_after_gamefiles(
         );
         let batch = players::PlayerBatch::new(&renderer.device, &store);
 
-        // Portrait initialization
-        let portrait_size = 64;
-        let texture = rendering::texture::Texture::create_render_texture(
-            &renderer.device,
-            "player_portrait",
-            portrait_size,
-            portrait_size,
-            wgpu::TextureFormat::Rgba8Unorm,
-        );
-        let depth_texture = rendering::texture::Texture::create_depth_texture(
-            &renderer.device,
-            portrait_size,
-            portrait_size,
-            "portrait_depth",
-        );
-        let mut portrait_camera = rendering::scene::CameraState::new(
-            glam::UVec2::new(portrait_size, portrait_size),
-            &renderer.device,
-            1.0,
-        );
-        // Center on head/upper torso
-        portrait_camera.set_screen_offset(&renderer.queue, 0.0, -42.0);
+        commands.insert_resource(crate::resources::PlayerPortraitState::new(
+            &renderer, &store,
+        ));
+        commands.insert_resource(crate::resources::ProfilePortraitState::new(
+            &renderer, &store,
+        ));
+        commands.insert_resource(crate::resources::LobbyPortraitRenderer::new(
+            &renderer, &store,
+        ));
 
-        let portrait_batch = players::PlayerBatch::new(&renderer.device, &store);
-
-        commands.insert_resource(crate::resources::PlayerPortraitState {
-            view: texture.view,
-            texture: texture.texture,
-            depth_texture,
-            batch: portrait_batch,
-            camera: portrait_camera,
-            dirty: true,
-            version: 0,
-        });
-
-        // Profile Portrait initialization (larger render for profile panel)
-        let profile_size = 128;
-        let p_texture = rendering::texture::Texture::create_render_texture(
-            &renderer.device,
-            "profile_portrait",
-            profile_size,
-            profile_size,
-            wgpu::TextureFormat::Rgba8Unorm,
-        );
-        let p_depth_texture = rendering::texture::Texture::create_depth_texture(
-            &renderer.device,
-            profile_size,
-            profile_size,
-            "profile_portrait_depth",
-        );
-        let mut p_camera = rendering::scene::CameraState::new(
-            glam::UVec2::new(profile_size, profile_size),
-            &renderer.device,
-            1.0,
-        );
-        // Center on the middle of the player
-        p_camera.set_screen_offset(&renderer.queue, 0.0, -32.0);
-
-        let p_batch = players::PlayerBatch::new(&renderer.device, &store);
-
-        commands.insert_resource(crate::resources::ProfilePortraitState {
-            view: p_texture.view,
-            texture: p_texture.texture,
-            depth_texture: p_depth_texture,
-            batch: p_batch,
-            camera: p_camera,
-            dirty: true,
-            version: 0,
-        });
+        let (gender, hair_style, hair_color, armor_id, version) = existing_character_preview
+            .as_ref()
+            .map(|preview| {
+                (
+                    preview.gender,
+                    preview.hair_style,
+                    preview.hair_color,
+                    preview.armor_id,
+                    preview.version,
+                )
+            })
+            .unwrap_or((1, 0, 0, 1, 0));
+        commands.insert_resource(crate::resources::CharacterCreatorPreviewState::with_target(
+            &renderer, &store, gender, hair_style, hair_color, armor_id, version,
+        ));
 
         commands.insert_resource(PlayerAssetStoreState { store });
         commands.insert_resource(PlayerBatchState { batch });
@@ -290,21 +247,21 @@ fn apply_pending_resize(
         pool.0.push(tex);
     }
 
-        if let Some(mut translucent_players) = translucent_players {
-            translucent_players.color_texture = rendering::texture::Texture::create_render_texture(
-                &renderer_state.device,
-                "translucent_player_color",
-                pending.width,
-                pending.height,
-                wgpu::TextureFormat::Rgba8Unorm,
-            );
-            translucent_players.depth_texture = rendering::texture::Texture::create_depth_texture(
-                &renderer_state.device,
-                pending.width,
-                pending.height,
-                "translucent_player_depth",
-            );
-        }
+    if let Some(mut translucent_players) = translucent_players {
+        translucent_players.color_texture = rendering::texture::Texture::create_render_texture(
+            &renderer_state.device,
+            "translucent_player_color",
+            pending.width,
+            pending.height,
+            wgpu::TextureFormat::Rgba8Unorm,
+        );
+        translucent_players.depth_texture = rendering::texture::Texture::create_depth_texture(
+            &renderer_state.device,
+            pending.width,
+            pending.height,
+            "translucent_player_depth",
+        );
+    }
 
     pending.dirty = false;
 }

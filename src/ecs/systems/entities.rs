@@ -447,9 +447,9 @@ fn spawn_player_sprites(
 
         if pants_color > 0 {
             parent.spawn(PlayerSprite {
-                id: pants_color as u16,
+                id: 1,
                 slot: PlayerPieceType::Pants,
-                color: 1,
+                color: pants_color,
             });
         }
         parent.spawn(PlayerSprite {

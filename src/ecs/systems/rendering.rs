@@ -2,12 +2,13 @@
 
 use super::super::animation::{Animation, AnimationMode, AnimationType};
 use super::super::components::*;
-use crate::resources::{CharacterCreatorPreviewState, LobbyPortraitRenderer, LobbyPortraits, PlayerPortraitState};
+use crate::resources::{
+    CharacterCreatorPreviewState, LobbyPortraitRenderer, LobbyPortraits, PlayerPortraitState,
+};
 use crate::{
     CreatureAssetStoreState, CreatureBatchState, ItemAssetStoreState, ItemBatchState,
     PlayerAssetStoreState, PlayerBatchState, PortraitRenderTarget, RendererState,
-    game_files::GameFiles,
-    settings_types::Settings,
+    game_files::GameFiles, settings_types::Settings,
 };
 use bevy::prelude::*;
 use formats::epf::EpfAnimationType;
@@ -93,7 +94,7 @@ fn build_saved_preview_sprites(
     ];
 
     if preview.pants_color > 0 {
-        slots.push((PlayerPieceType::Pants, preview.pants_color as u16, 1));
+        slots.push((PlayerPieceType::Pants, 1, preview.pants_color as u8));
     }
 
     if preview.overcoat > 0 {
@@ -201,7 +202,9 @@ pub fn sync_lobby_portraits(
                 continue;
             }
 
-            lobby_renderer.batch.clear_and_unload(&mut player_store.store);
+            lobby_renderer
+                .batch
+                .clear_and_unload(&mut player_store.store);
             let sprites = build_saved_preview_sprites(preview);
             populate_player_batch_with_sprites(
                 &renderer,
@@ -234,7 +237,9 @@ pub fn sync_lobby_portraits(
         }
     }
 
-    lobby_renderer.batch.clear_and_unload(&mut player_store.store);
+    lobby_renderer
+        .batch
+        .clear_and_unload(&mut player_store.store);
     portrait_state.version += 1;
 }
 
@@ -255,13 +260,7 @@ pub fn sync_character_creator_preview(
         return;
     };
 
-    render_sprites_to_portrait_target(
-        &renderer,
-        &game_files,
-        &mut player_store,
-        target,
-        &sprites,
-    );
+    render_sprites_to_portrait_target(&renderer, &game_files, &mut player_store, target, &sprites);
     portrait_state.version = target.version;
 }
 
@@ -297,7 +296,14 @@ fn render_sprites_to_portrait_target(
     sprites: &[(PlayerSpriteKey, u8)],
 ) {
     target.batch.clear_and_unload(&mut player_store.store);
-    populate_player_batch_with_sprites(renderer, game_files, player_store, &target.batch, sprites, 1);
+    populate_player_batch_with_sprites(
+        renderer,
+        game_files,
+        player_store,
+        &target.batch,
+        sprites,
+        1,
+    );
 
     render_player_batch_to_target(
         renderer,

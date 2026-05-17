@@ -476,53 +476,43 @@ pub fn update_player_sprites(
     store_state: Res<PlayerAssetStoreState>,
     batch_state: Res<PlayerBatchState>,
     parent_query: Query<(
+        Entity,
         &Position,
         &Direction,
         Option<&Animation>,
+        Option<&crate::ecs::animation::AnimationTimer>,
         &PlayerRenderState,
         Option<&TargetingHover>,
         &Children,
         &EntityId,
     )>,
-    changed_query: Query<
-        Entity,
-        Or<(
-            Changed<Position>,
-            Changed<Direction>,
-            Changed<Animation>,
-            Changed<PlayerRenderState>,
-            Changed<TargetingHover>,
-        )>,
-    >,
-    mut removed_hovers: RemovedComponents<TargetingHover>,
+    _removed_hovers: RemovedComponents<TargetingHover>,
     children_query: Query<(&PlayerSprite, &PlayerSpriteInstance)>,
+    time: Res<Time>,
 ) {
-    let mut to_update = changed_query
-        .iter()
-        .collect::<std::collections::HashSet<_>>();
-    for entity in removed_hovers.read() {
-        to_update.insert(entity);
-    }
 
-    for entity in to_update {
-        if let Ok((
-            position,
-            direction,
-            animation,
-            render_state,
-            targeting_hover,
-            children,
-            _entity_id,
-        )) = parent_query.get(entity)
-        {
-            let (anim_type, frame_index) = match animation {
-                Some(anim) if anim.mode == AnimationMode::Finished => (EpfAnimationType::Idle, 0),
-                Some(anim) => match anim.anim_type {
-                    AnimationType::Player(at) => (at, anim.current_frame),
-                    _ => (EpfAnimationType::Idle, 0),
-                },
-                None => (EpfAnimationType::Idle, 0),
-            };
+    for (
+        _entity,
+        position,
+        direction,
+        animation,
+        animation_timer,
+        render_state,
+        targeting_hover,
+        children,
+        _entity_id,
+    ) in parent_query.iter()
+    {
+        let (anim_type, progress) = match (animation, animation_timer) {
+            (Some(anim), Some(timer)) if anim.mode != AnimationMode::Finished => {
+                if let AnimationType::Player(at) = anim.anim_type {
+                    (at, timer.0.fraction())
+                } else {
+                    (EpfAnimationType::Idle, time.elapsed_secs() % 1.0)
+                }
+            }
+            _ => (EpfAnimationType::Idle, time.elapsed_secs() % 1.0),
+        };
 
             let tint = targeting_hover.map(|t| t.tint).unwrap_or(Vec3::ZERO);
             let flags = player_instance_state(render_state);
@@ -530,14 +520,14 @@ pub fn update_player_sprites(
             for child_entity in children.iter() {
                 if let Ok((sprite, sprite_instance)) = children_query.get(child_entity) {
                     let target = match (anim_type.is_emote(), sprite.slot) {
-                        (true, PlayerPieceType::Emote) => Some((anim_type, frame_index)), // Active emote layer
+                        (true, PlayerPieceType::Emote) => Some((anim_type, progress)), // Active emote layer
                         (true, PlayerPieceType::Face) => None, // Hide face when emoting (face usually in emote)
-                        (true, _) => Some((EpfAnimationType::Idle, 0)), // Base layers go to Idle
+                        (true, _) => Some((EpfAnimationType::Idle, time.elapsed_secs() % 1.0)), // Base layers go to Idle
                         (false, PlayerPieceType::Emote) => None, // Hide emote layer when not emoting
-                        (false, _) => Some((anim_type, frame_index)), // Standard animation
+                        (false, _) => Some((anim_type, progress)), // Standard animation
                     };
 
-                    if let Some((at, fi)) = target {
+                    if let Some((at, p)) = target {
                         if let Err(e) = batch_state.batch.update_player_sprite_with_animation(
                             &shared_state.queue,
                             &store_state.store,
@@ -547,7 +537,7 @@ pub fn update_player_sprites(
                             position.y,
                             sprite.color,
                             at,
-                            fi,
+                            p,
                             flags,
                             tint,
                         ) {
@@ -572,7 +562,6 @@ pub fn update_player_sprites(
                 }
             }
         }
-    }
 }
 
 /// Syncs creature positions and animations to the GPU.

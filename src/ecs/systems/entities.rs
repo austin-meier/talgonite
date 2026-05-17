@@ -351,6 +351,7 @@ fn spawn_display_player(
                 *head_sprite,
                 *head_color,
                 *pants_color,
+                *body_sprite_raw,
                 *body_color,
                 *armor_sprite1,
                 *boots_sprite,
@@ -407,6 +408,7 @@ fn spawn_player_sprites(
     head_sprite: u16,
     head_color: u8,
     pants_color: u8,
+    body_sprite: u8,
     body_color: u8,
     armor_sprite1: u16,
     boots_sprite: u8,
@@ -425,11 +427,13 @@ fn spawn_player_sprites(
     face_sprite: u8,
 ) {
     player_entity.with_children(|parent| {
-        parent.spawn(PlayerSprite {
-            id: 1,
-            slot: PlayerPieceType::Body,
-            color: body_color,
-        });
+        if body_sprite < 0xA0 {
+            parent.spawn(PlayerSprite {
+                id: if body_sprite >= 0x50 { 5 } else { 1 },
+                slot: PlayerPieceType::Body,
+                color: body_color,
+            });
+        }
 
         if face_sprite > 0 {
             parent.spawn(PlayerSprite {

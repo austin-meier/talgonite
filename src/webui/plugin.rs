@@ -1162,7 +1162,6 @@ fn handle_ui_inbound_login(
     let mut input_bindings = bindings.input_bindings;
     let mut unified_bindings = bindings.unified_bindings;
 
-
     for UiInbound(msg) in inbound.read() {
         match msg {
             UiToCore::InputKeyboard { .. } | UiToCore::InputPointer { .. } => {}
@@ -1173,7 +1172,12 @@ fn handle_ui_inbound_login(
             UiToCore::RequestSnapshot => {
                 outbound.write(UiOutbound(settings.to_snapshot_message(None)));
                 outbound.write(UiOutbound(settings.to_sync_message()));
-                ensure_selected_prelogin_connection(&mut commands, &mut prelogin_state, &settings, false);
+                ensure_selected_prelogin_connection(
+                    &mut commands,
+                    &mut prelogin_state,
+                    &settings,
+                    false,
+                );
             }
             UiToCore::LoginSubmit {
                 server_id,
@@ -1194,30 +1198,26 @@ fn handle_ui_inbound_login(
                 if let Some(server) = server {
                     let uname = username.clone();
                     let pw = password.clone();
-                    let uname_task = uname.clone();
-                    let pw_task = pw.clone();
                     let remember = *remember;
                     let cred_id = format!("{}:{}", server.id, uname);
-                    match prelogin_state.take_session(server.id) {
-                        Ok(lobby) => {
-                            let task: Task<
-                                Result<(network::DecryptedReceiver, network::EncryptedSender), LoginError>,
-                            > = IoTaskPool::get().spawn(async move {
-                                match lobby.login(&uname_task, &pw_task).await {
-                                    Ok((rx, tx)) => Ok((rx, tx)),
-                                    Err(code) => Err(code),
-                                }
-                            });
-                            commands.spawn(LoginTaskEntity(LoginTaskInner {
-                                task,
-                                remember,
-                                cred_id,
-                                server_id: server.id,
-                                username: uname,
-                                password: Some(pw),
-                            }));
+                    let request = PendingLoginRequest {
+                        remember,
+                        cred_id,
+                        server_id: server.id,
+                        username: uname,
+                        password: pw,
+                    };
+
+                    match start_or_queue_login(
+                        &mut commands,
+                        &mut prelogin_state,
+                        server.id,
+                        request,
+                    ) {
+                        Ok(LoginStartOutcome::Started) => {
                             outbound.write(UiOutbound(settings.to_snapshot_message(None)));
                         }
+                        Ok(LoginStartOutcome::Queued) => {}
                         Err(err) => {
                             outbound.write(UiOutbound(settings.to_snapshot_message(Some(err))));
                         }
@@ -1253,32 +1253,24 @@ fn handle_ui_inbound_login(
                                 server_id
                             );
                             let uname = username.clone();
-                            let pw_task = password.clone();
-                            let uname_for_task = uname.clone();
-                            match prelogin_state.take_session(server_id) {
-                                Ok(lobby) => {
-                                    let task: Task<
-                                        Result<
-                                            (network::DecryptedReceiver, network::EncryptedSender),
-                                            LoginError,
-                                        >,
-                                    > = IoTaskPool::get().spawn(async move {
-                                        match lobby.login(&uname_for_task, &pw_task).await {
-                                            Ok((rx, tx)) => Ok((rx, tx)),
-                                            Err(code) => Err(code),
-                                        }
-                                    });
-                                    commands.spawn(LoginTaskEntity(LoginTaskInner {
-                                        task,
-                                        remember: false,
-                                        cred_id,
-                                        server_id,
-                                        username: uname,
-                                        password: None,
-                                    }));
-                                }
+                            let request = PendingLoginRequest {
+                                remember: false,
+                                cred_id,
+                                server_id,
+                                username: uname,
+                                password,
+                            };
+
+                            match start_or_queue_login(
+                                &mut commands,
+                                &mut prelogin_state,
+                                server_id,
+                                request,
+                            ) {
+                                Ok(LoginStartOutcome::Started | LoginStartOutcome::Queued) => {}
                                 Err(err) => {
-                                    outbound.write(UiOutbound(settings.to_snapshot_message(Some(err))));
+                                    outbound
+                                        .write(UiOutbound(settings.to_snapshot_message(Some(err))));
                                     emitted_snapshot = true;
                                 }
                             }
@@ -1328,7 +1320,11 @@ fn handle_ui_inbound_login(
             } => {
                 println!(
                     "[webui] CharacterCreationSubmit: server_id={:?} username={} gender={} hair_style={} hair_color={}",
-                    server_id, username, char_preview_state.gender, char_preview_state.hair_style, char_preview_state.hair_color
+                    server_id,
+                    username,
+                    char_preview_state.gender,
+                    char_preview_state.hair_style,
+                    char_preview_state.hair_color
                 );
                 let server = settings
                     .servers
@@ -1346,9 +1342,9 @@ fn handle_ui_inbound_login(
                     let gender_task = match packets::client::CharGender::try_from(gender_task) {
                         Ok(gender) => gender,
                         Err(_) => {
-                            outbound.write(UiOutbound(settings.to_snapshot_message(Some(
-                                LoginError::Unknown,
-                            ))));
+                            outbound.write(UiOutbound(
+                                settings.to_snapshot_message(Some(LoginError::Unknown)),
+                            ));
                             continue;
                         }
                     };
@@ -1372,20 +1368,25 @@ fn handle_ui_inbound_login(
 
                                 result
                             });
-                            commands.spawn(CharacterCreationTaskEntity(CharacterCreationTaskInner {
-                                task,
-                                save_login: *save_login,
-                                server_id: server.id,
-                                username: uname,
-                                password: Some(pw),
-                            }));
+                            commands.spawn(CharacterCreationTaskEntity(
+                                CharacterCreationTaskInner {
+                                    task,
+                                    save_login: *save_login,
+                                    server_id: server.id,
+                                    username: uname,
+                                    password: Some(pw),
+                                },
+                            ));
                         }
                         Err(err) => {
                             outbound.write(UiOutbound(settings.to_snapshot_message(Some(err))));
                         }
                     }
                 } else {
-                    println!("[webui] CharacterCreationSubmit: server id {} not found", server_id);
+                    println!(
+                        "[webui] CharacterCreationSubmit: server id {} not found",
+                        server_id
+                    );
                 }
             }
             UiToCore::UpdateCharacterCreationPreview {
@@ -1403,7 +1404,12 @@ fn handle_ui_inbound_login(
             UiToCore::ServersChangeCurrent { id } => {
                 settings.gameplay.current_server_id = Some(*id);
                 outbound.write(UiOutbound(settings.to_snapshot_message(None)));
-                ensure_selected_prelogin_connection(&mut commands, &mut prelogin_state, &settings, true);
+                ensure_selected_prelogin_connection(
+                    &mut commands,
+                    &mut prelogin_state,
+                    &settings,
+                    true,
+                );
             }
             UiToCore::ServersAdd { server } => {
                 let new_id = next_id(settings.servers.iter().map(|s| s.id));
@@ -1416,7 +1422,12 @@ fn handle_ui_inbound_login(
                     settings.gameplay.current_server_id = Some(new_id);
                 }
                 outbound.write(UiOutbound(settings.to_snapshot_message(None)));
-                ensure_selected_prelogin_connection(&mut commands, &mut prelogin_state, &settings, true);
+                ensure_selected_prelogin_connection(
+                    &mut commands,
+                    &mut prelogin_state,
+                    &settings,
+                    true,
+                );
             }
             UiToCore::ServersEdit { server } => {
                 if let Some(s) = settings.servers.iter_mut().find(|s| s.id == server.id) {
@@ -1437,7 +1448,12 @@ fn handle_ui_inbound_login(
                     settings.gameplay.current_server_id = settings.servers.first().map(|s| s.id);
                 }
                 outbound.write(UiOutbound(settings.to_snapshot_message(None)));
-                ensure_selected_prelogin_connection(&mut commands, &mut prelogin_state, &settings, true);
+                ensure_selected_prelogin_connection(
+                    &mut commands,
+                    &mut prelogin_state,
+                    &settings,
+                    true,
+                );
             }
             UiToCore::SettingsChange { xray_size } => {
                 settings.graphics.xray_size = crate::settings_types::XRaySize::from_u8(*xray_size);
@@ -2771,6 +2787,16 @@ struct PreLoginConnectionState {
     server_id: Option<u32>,
     status: PreLoginConnectionStatus,
     session: Arc<Mutex<Option<crate::session_prelogin::PreLoginSession>>>,
+    pending_login: Option<PendingLoginRequest>,
+}
+
+#[derive(Clone)]
+struct PendingLoginRequest {
+    remember: bool,
+    cred_id: String,
+    server_id: u32,
+    username: String,
+    password: String,
 }
 
 impl Default for PreLoginConnectionState {
@@ -2779,6 +2805,7 @@ impl Default for PreLoginConnectionState {
             server_id: None,
             status: PreLoginConnectionStatus::Idle,
             session: Arc::new(Mutex::new(None)),
+            pending_login: None,
         }
     }
 }
@@ -2787,6 +2814,7 @@ impl PreLoginConnectionState {
     fn clear(&mut self) {
         self.server_id = None;
         self.status = PreLoginConnectionStatus::Idle;
+        self.pending_login = None;
         if let Ok(mut session) = self.session.lock() {
             *session = None;
         }
@@ -2800,6 +2828,9 @@ impl PreLoginConnectionState {
     }
 
     fn mark_connecting(&mut self, server_id: u32) {
+        if self.server_id != Some(server_id) {
+            self.pending_login = None;
+        }
         self.server_id = Some(server_id);
         self.status = PreLoginConnectionStatus::Connecting;
         if let Ok(mut session) = self.session.lock() {
@@ -2815,8 +2846,21 @@ impl PreLoginConnectionState {
     fn mark_failed(&mut self, server_id: u32, error: LoginError) {
         self.server_id = Some(server_id);
         self.status = PreLoginConnectionStatus::Failed(error);
+        self.pending_login = None;
         if let Ok(mut session) = self.session.lock() {
             *session = None;
+        }
+    }
+
+    fn set_pending_login(&mut self, request: PendingLoginRequest) {
+        self.pending_login = Some(request);
+    }
+
+    fn take_pending_login(&mut self, server_id: u32) -> Option<PendingLoginRequest> {
+        if self.server_id == Some(server_id) {
+            self.pending_login.take()
+        } else {
+            None
         }
     }
 
@@ -2919,9 +2963,63 @@ fn ensure_selected_prelogin_connection(
     spawn_prelogin_connect_task(commands, prelogin_state, &server, force);
 }
 
+fn spawn_login_task(
+    commands: &mut Commands,
+    lobby: crate::session_prelogin::PreLoginSession,
+    request: PendingLoginRequest,
+) {
+    let uname_task = request.username.clone();
+    let pw_task = request.password.clone();
+    let task: Task<Result<(network::DecryptedReceiver, network::EncryptedSender), LoginError>> =
+        IoTaskPool::get().spawn(async move {
+            match lobby.login(&uname_task, &pw_task).await {
+                Ok((rx, tx)) => Ok((rx, tx)),
+                Err(code) => Err(code),
+            }
+        });
+
+    commands.spawn(LoginTaskEntity(LoginTaskInner {
+        task,
+        remember: request.remember,
+        cred_id: request.cred_id,
+        server_id: request.server_id,
+        username: request.username,
+        password: Some(request.password),
+    }));
+}
+
+enum LoginStartOutcome {
+    Started,
+    Queued,
+}
+
+fn start_or_queue_login(
+    commands: &mut Commands,
+    prelogin_state: &mut PreLoginConnectionState,
+    server_id: u32,
+    request: PendingLoginRequest,
+) -> Result<LoginStartOutcome, LoginError> {
+    if prelogin_state.server_id != Some(server_id) {
+        return Err(LoginError::Network(
+            "Selected server connection is stale".to_string(),
+        ));
+    }
+
+    if matches!(prelogin_state.status, PreLoginConnectionStatus::Connecting) {
+        prelogin_state.set_pending_login(request);
+        return Ok(LoginStartOutcome::Queued);
+    }
+
+    let lobby = prelogin_state.take_session(server_id)?;
+    spawn_login_task(commands, lobby, request);
+    Ok(LoginStartOutcome::Started)
+}
+
 fn handle_prelogin_connect_tasks(
     mut commands: Commands,
     mut prelogin_state: ResMut<PreLoginConnectionState>,
+    settings: Res<SettingsFile>,
+    mut outbound: MessageWriter<UiOutbound>,
     mut q: Query<(Entity, &mut PreLoginConnectTaskEntity)>,
 ) {
     for (entity, mut task_wrap) in &mut q {
@@ -2933,11 +3031,29 @@ fn handle_prelogin_connect_tasks(
                             *cached = Some(session);
                         }
                         prelogin_state.mark_ready(task_wrap.server_id);
+                        if let Some(request) =
+                            prelogin_state.take_pending_login(task_wrap.server_id)
+                        {
+                            if let Ok(lobby) = prelogin_state.take_session(task_wrap.server_id) {
+                                spawn_login_task(&mut commands, lobby, request);
+                            }
+                        }
                     }
                 }
                 Err(error) => {
                     if prelogin_state.server_id == Some(task_wrap.server_id) {
-                        prelogin_state.mark_failed(task_wrap.server_id, error);
+                        let had_pending_login = prelogin_state.pending_login.is_some();
+                        prelogin_state.mark_failed(task_wrap.server_id, error.clone());
+                        if had_pending_login {
+                            let logins_public: Vec<SavedCredentialPublic> =
+                                settings.saved_credentials.iter().map(to_public).collect();
+                            outbound.write(UiOutbound(CoreToUi::Snapshot {
+                                servers: settings.servers.clone(),
+                                current_server_id: settings.gameplay.current_server_id,
+                                logins: logins_public,
+                                login_error: Some(error),
+                            }));
+                        }
                     }
                 }
             }
@@ -2972,7 +3088,6 @@ struct CharacterCreationResultComp(Option<CharacterCreationTaskInner>);
 
 #[derive(Component)]
 struct CharacterCreationErrorComp(LoginError);
-
 
 #[derive(Component)]
 struct LoginTaskEntity(LoginTaskInner);
@@ -3025,10 +3140,16 @@ fn handle_login_tasks(mut commands: Commands, mut q: Query<(Entity, &mut LoginTa
     }
 }
 
-fn handle_character_creation_tasks(mut commands: Commands, mut q: Query<(Entity, &mut CharacterCreationTaskEntity)>) {
+fn handle_character_creation_tasks(
+    mut commands: Commands,
+    mut q: Query<(Entity, &mut CharacterCreationTaskEntity)>,
+) {
     for (e, mut task_wrap) in &mut q {
         if let Some(res) = future::block_on(future::poll_once(&mut task_wrap.0.task)) {
-            println!("[webui] CharacterCreationTask completed: success={}.", res.is_ok());
+            println!(
+                "[webui] CharacterCreationTask completed: success={}.",
+                res.is_ok()
+            );
             let inner = std::mem::replace(
                 &mut task_wrap.0,
                 CharacterCreationTaskInner {
@@ -3075,7 +3196,7 @@ fn handle_character_creation_results(
             "[webui] CharacterCreationResult: success for user {}",
             inner.username
         );
-        
+
         let cred_id = format!("{}:{}", inner.server_id, inner.username);
 
         if inner.save_login {
@@ -3105,12 +3226,13 @@ fn handle_character_creation_results(
                 prelogin_state.mark_ready(server.id);
             }
         }
-        outbound.write(UiOutbound(settings.to_snapshot_message(Some(err.0.clone()))));
+        outbound.write(UiOutbound(
+            settings.to_snapshot_message(Some(err.0.clone())),
+        ));
     }
 }
 
 fn parse_host_port(address: &str) -> Option<(String, u16)> {
-
     let mut parts = address.split(':');
     let host = parts.next()?.to_string();
     let port = parts
@@ -3284,7 +3406,12 @@ fn handle_login_results(
             "[webui] LoginResult: failed with code {:?} for user {} on server {}",
             err.0, err.1.username, err.1.server_id
         );
-        if let Some(server) = settings.servers.iter().find(|s| s.id == err.1.server_id).cloned() {
+        if let Some(server) = settings
+            .servers
+            .iter()
+            .find(|s| s.id == err.1.server_id)
+            .cloned()
+        {
             spawn_prelogin_connect_task(&mut commands, &mut prelogin_state, &server, true);
         }
         // Login failed: keep user on the current screen (login) and emit error

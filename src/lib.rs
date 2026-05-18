@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
 pub use game_ui::slint_types::{
-    ChatMessage, ContextMenuEntry, ContextMenuState, Cooldown, DragDropState,
-    EquipmentSlotData, GameState, GroupInviteNotification, GroupMember, HotbarEntry,
-    InputBridge, InstallerState, InventoryItem, LegendMarkData, LobbyState, LoginBridge,
-    LoginState, MainWindow, MailBoardPost, MailBoardState, MenuEntry, NpcDialogData,
-    NpcDialogState, PlatformState, ProfileData, SavedLoginItem, ServerItem, SettingsState, Skill,
-    SlotPanelType, SocialStatus, SocialStatusEntry, SocialStatusState, SpeechBubble, Spell,
-    WorldLabel, WorldListMemberUi, WorldMapNode,
+    ChatMessage, ContextMenuEntry, ContextMenuState, Cooldown, DragDropState, EquipmentSlotData,
+    GameState, GroupInviteNotification, GroupMember, HotbarEntry, InputBridge, InstallerState,
+    InventoryItem, LegendMarkData, LobbyState, LoginBridge, LoginState, MailBoardPost,
+    MailBoardState, MainWindow, MenuEntry, NpcDialogData, NpcDialogState, PlatformState,
+    ProfileData, SavedLoginItem, ServerItem, SettingsState, Skill, SlotPanelType, SocialStatus,
+    SocialStatusEntry, SocialStatusState, SpeechBubble, Spell, WorldLabel, WorldListMemberUi,
+    WorldMapNode,
 };
 
 #[cfg(target_os = "android")]
@@ -23,6 +23,7 @@ pub mod game_files;
 pub mod input;
 pub mod map_store;
 pub mod metafile_store;
+pub mod minimap_assets;
 pub mod network;
 pub mod plugins;
 pub mod render_plugin;
@@ -36,11 +37,16 @@ pub mod slint_plugin;
 pub mod slint_support;
 pub mod webui;
 
+pub use minimap_assets::{
+    FULLSCREEN_MINIMAP_ASSETS, MINIMAP_ICON_CREATURE_KTX2, MINIMAP_ICON_PLAYER_KTX2,
+    MINIMAP_TILES_KTX2, MinimapAssets,
+};
+
 pub use resources::{
     Camera, CreatureAssetStoreState, CreatureBatchState, EffectManagerState, ItemAssetStoreState,
-    ItemBatchState, MapRendererState, PlayerAssetStoreState, PlayerBatchState, PlayerPortraitState,
-    PortraitRenderTarget, RendererState, StorageConfig, TranslucentPlayerPassState,
-    WindowSurface,
+    ItemBatchState, MapRendererState, MinimapCacheState, MinimapMarkerSyncState,
+    MinimapRendererState, PlayerAssetStoreState, PlayerBatchState, PlayerPortraitState,
+    PortraitRenderTarget, RendererState, StorageConfig, TranslucentPlayerPassState, WindowSurface,
 };
 
 #[derive(Resource)]

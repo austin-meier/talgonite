@@ -1,8 +1,78 @@
 use std::fmt;
+use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
 use game_types::{KeyBindings, SavedCredentialPublic, ServerEntry, SlotPanelType};
 use packets::server::{LoginMessageType, SpellType};
+use regex::Regex;
+
+static LEVEL_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)\s*\(Lev:\s*(\d+)/(\d+)\)$").expect("valid level pattern"));
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AbilityLevel {
+    pub current: u8,
+    pub max: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsedAbilityName {
+    pub full_name: String,
+    pub base_name: String,
+    pub level: Option<AbilityLevel>,
+}
+
+impl ParsedAbilityName {
+    pub fn display_name(&self) -> String {
+        match self.level {
+            Some(level) => format!("{} (Lev: {}/{})", self.base_name, level.current, level.max),
+            None => self.full_name.clone(),
+        }
+    }
+
+    pub fn chant_name(&self) -> &str {
+        &self.base_name
+    }
+}
+
+pub fn parse_ability_name(name: &str) -> ParsedAbilityName {
+    let full_name = name.trim().to_string();
+
+    let Some(captures) = LEVEL_PATTERN.captures(&full_name) else {
+        return ParsedAbilityName {
+            full_name: full_name.clone(),
+            base_name: full_name,
+            level: None,
+        };
+    };
+
+    let Some(level_match) = captures.get(0) else {
+        return ParsedAbilityName {
+            full_name: full_name.clone(),
+            base_name: full_name,
+            level: None,
+        };
+    };
+
+    let base_name = full_name[..level_match.start()].trim_end().to_string();
+    let current = captures.get(1).and_then(|m| m.as_str().parse::<u8>().ok());
+    let max = captures.get(2).and_then(|m| m.as_str().parse::<u8>().ok());
+
+    let level = match (current, max) {
+        (Some(current), Some(max)) => Some(AbilityLevel { current, max }),
+        _ => None,
+    };
+
+    ParsedAbilityName {
+        full_name,
+        base_name: if base_name.is_empty() {
+            name.trim().to_string()
+        } else {
+            base_name
+        },
+        level,
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum LoginError {
@@ -655,6 +725,13 @@ pub struct SkillUi {
     pub cooldown_secs: Option<u32>,
 }
 
+impl SkillUi {
+    pub fn display_name(&self) -> String {
+        let parsed = parse_ability_name(&self.name);
+        parsed.display_name()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Cooldown {
     pub start_time: Instant,
@@ -682,6 +759,13 @@ pub struct SpellUi {
     pub prompt: String,
     pub cast_lines: u8,
     pub spell_type: SpellType,
+}
+
+impl SpellUi {
+    pub fn display_name(&self) -> String {
+        let parsed = parse_ability_name(&self.panel_name);
+        parsed.display_name()
+    }
 }
 
 #[derive(Debug, Clone)]

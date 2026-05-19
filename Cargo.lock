@@ -2624,6 +2624,7 @@ dependencies = [
  "game-types",
  "i-slint-core",
  "packets",
+ "regex",
  "rendering",
  "serde",
  "slint",

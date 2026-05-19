@@ -3,7 +3,7 @@ use packets::client::{BeginChant, SpellChant, SpellUse, SpellUseArgs};
 use packets::server::SpellType;
 
 use crate::ecs::interaction::HoveredEntity;
-use crate::events::{AbilityEvent, EntityClickEvent};
+use crate::events::{AbilityEvent, EntityClickEvent, TileClickEvent, WallClickEvent};
 use crate::network::PacketOutbox;
 use crate::webui::ipc::ActionId;
 use crate::webui::plugin::AbilityState;
@@ -125,6 +125,13 @@ pub fn update_spell_casting(
                 return;
             };
 
+            if cast.total_cast_lines >= 1 {
+                let parsed_spell_name = crate::webui::ipc::parse_ability_name(&spell.panel_name);
+                outbox.send(&SpellChant {
+                    chant_message: parsed_spell_name.chant_name().to_string(),
+                });
+            }
+
             let args = if let Some(ref target) = cast.target {
                 SpellUseArgs::Targeted {
                     target_id: target.entity_id,
@@ -147,6 +154,8 @@ pub fn update_spell_casting(
 
 pub fn handle_spell_targeting(
     mut events: MessageReader<EntityClickEvent>,
+    mut tile_clicks: MessageReader<TileClickEvent>,
+    mut wall_clicks: MessageReader<WallClickEvent>,
     mut casting_state: ResMut<SpellCastingState>,
     ability_state: Option<Res<AbilityState>>,
     query: Query<(&EntityId, &Position, Option<&Player>, Option<&NPC>)>,
@@ -157,6 +166,11 @@ pub fn handle_spell_targeting(
     };
 
     if !cast.waiting_for_target {
+        return;
+    }
+
+    if tile_clicks.read().next().is_some() || wall_clicks.read().next().is_some() {
+        casting_state.active_cast = None;
         return;
     }
 

@@ -2600,11 +2600,12 @@ fn bridge_ability_events(
                 skill.on_cooldown = Some(Cooldown::new(cd));
             }
             AbilityEvent::AddSkill(pkt) => {
+                let parsed = game_ui::parse_ability_name(&pkt.name);
                 if let Some(existing) = state.skills.iter_mut().find(|s| s.slot == pkt.slot) {
-                    existing.name = pkt.name.clone();
+                    existing.name = parsed.full_name.clone();
                     existing.sprite = pkt.sprite;
 
-                    let new_id = ActionId::from_skill(pkt.sprite, &pkt.name);
+                    let new_id = ActionId::from_skill(pkt.sprite, parsed.chant_name());
 
                     if new_id != existing.id {
                         existing.id = new_id;
@@ -2613,8 +2614,8 @@ fn bridge_ability_events(
                 } else {
                     state.skills.push(SkillUi {
                         slot: pkt.slot,
-                        id: ActionId::from_skill(pkt.sprite, &pkt.name),
-                        name: pkt.name.clone(),
+                        id: ActionId::from_skill(pkt.sprite, parsed.chant_name()),
+                        name: parsed.full_name.clone(),
                         sprite: pkt.sprite,
                         cooldown_secs: None,
                         on_cooldown: None,
@@ -2625,19 +2626,20 @@ fn bridge_ability_events(
                 state.skills.retain(|s| s.slot != pkt.slot);
             }
             AbilityEvent::AddSpell(pkt) => {
+                let parsed = game_ui::parse_ability_name(&pkt.panel_name);
                 if let Some(existing) = state.spells.iter_mut().find(|s| s.slot == pkt.slot) {
                     existing.sprite = pkt.sprite;
-                    existing.panel_name = pkt.panel_name.clone();
+                    existing.panel_name = parsed.full_name.clone();
                     existing.prompt = pkt.prompt.clone();
                     existing.cast_lines = pkt.cast_lines;
-                    existing.id = ActionId::from_spell(pkt.sprite, &pkt.panel_name);
+                    existing.id = ActionId::from_spell(pkt.sprite, parsed.chant_name());
                     existing.spell_type = pkt.spell_type;
                 } else {
                     state.spells.push(SpellUi {
                         slot: pkt.slot,
                         sprite: pkt.sprite,
-                        id: ActionId::from_spell(pkt.sprite, &pkt.panel_name),
-                        panel_name: pkt.panel_name.clone(),
+                        id: ActionId::from_spell(pkt.sprite, parsed.chant_name()),
+                        panel_name: parsed.full_name.clone(),
                         prompt: pkt.prompt.clone(),
                         cast_lines: pkt.cast_lines,
                         spell_type: pkt.spell_type,

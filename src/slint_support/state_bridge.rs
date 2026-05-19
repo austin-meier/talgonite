@@ -347,7 +347,7 @@ pub fn apply_core_to_slint(
                 .load_skill_icon(&game_files, s.sprite)
                 .unwrap_or_default();
             let skill = crate::Skill {
-                name: slint::SharedString::from(s.name.as_str()),
+                name: slint::SharedString::from(s.display_name().as_str()),
                 icon,
                 slot: s.slot as i32,
                 cooldown: match &s.on_cooldown {
@@ -387,7 +387,7 @@ pub fn apply_core_to_slint(
                 .load_spell_icon(&game_files, s.sprite)
                 .unwrap_or_default();
             let spell = crate::Spell {
-                name: slint::SharedString::from(s.panel_name.as_str()),
+                name: slint::SharedString::from(s.display_name().as_str()),
                 icon,
                 slot: s.slot as i32,
                 prompt: slint::SharedString::from(s.prompt.as_str()),
@@ -938,7 +938,7 @@ pub fn apply_core_to_slint(
                         SlotPanelType::Skill => {
                             if let Some(skill) = ability.skills.iter().find(|s| s.id == action_id) {
                                 sprite = skill.sprite;
-                                name = slint::SharedString::from(skill.name.as_str());
+                                name = slint::SharedString::from(skill.display_name().as_str());
                                 enabled = true;
                                 cooldown = skill
                                     .on_cooldown
@@ -949,7 +949,7 @@ pub fn apply_core_to_slint(
                         SlotPanelType::Spell => {
                             if let Some(spell) = ability.spells.iter().find(|s| s.id == action_id) {
                                 sprite = spell.sprite;
-                                name = slint::SharedString::from(spell.panel_name.as_str());
+                                name = slint::SharedString::from(spell.display_name().as_str());
                                 enabled = true;
                                 cooldown = hotbar.cooldowns.get(&slot.action_id).cloned();
                             }

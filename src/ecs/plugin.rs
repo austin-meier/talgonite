@@ -19,7 +19,7 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         // Configure system set ordering
         systems::configure_game_sets(app);
-        
+
         app.add_plugins(crate::ecs::macros::MacrosPlugin);
 
         app.init_resource::<SpellCastingState>()
@@ -57,16 +57,18 @@ impl Plugin for GamePlugin {
                     audio::sync_audio_settings,
                     spell_casting::start_spell_cast,
                     spell_casting::update_spell_casting,
-                    spell_casting::handle_spell_targeting
-                        .after(crate::plugins::mouse_interaction::MouseInteractionSet),
-                    spell_casting::update_targeting_hover,
                     systems::resolve_interaction_intents_system
-                        .after(spell_casting::handle_spell_targeting)
-                        .after(crate::plugins::mouse_interaction::MouseInteractionSet),
+                        .after(crate::plugins::mouse_interaction::MouseInteractionSet)
+                        .before(spell_casting::handle_spell_targeting),
                     systems::pathfinding_target_system
-                        .after(crate::plugins::mouse_interaction::MouseInteractionSet),
-                    systems::auto_attack_system
-                        .after(crate::plugins::input::input_handling_system),
+                        .after(crate::plugins::mouse_interaction::MouseInteractionSet)
+                        .before(spell_casting::handle_spell_targeting),
+                    spell_casting::handle_spell_targeting
+                        .after(crate::plugins::mouse_interaction::MouseInteractionSet)
+                        .after(systems::resolve_interaction_intents_system)
+                        .after(systems::pathfinding_target_system),
+                    spell_casting::update_targeting_hover,
+                    systems::auto_attack_system.after(crate::plugins::input::input_handling_system),
                     systems::player_interruption_system
                         .after(systems::resolve_interaction_intents_system),
                     systems::consume_interaction_intents_system
@@ -111,14 +113,14 @@ impl Plugin for GamePlugin {
                     .run_if(in_state(crate::app_state::AppState::InGame))
                     .in_set(GameSet::Movement),
             )
-           // === Item systems ===
-           .add_systems(
-               Update,
-               systems::keyboard_item_pickup_system
-                   .run_if(in_state(crate::app_state::AppState::InGame))
-                   .after(crate::plugins::input::InputPumpSet)
-                   .in_set(GameSet::EventProcessing),
-           )
+            // === Item systems ===
+            .add_systems(
+                Update,
+                systems::keyboard_item_pickup_system
+                    .run_if(in_state(crate::app_state::AppState::InGame))
+                    .after(crate::plugins::input::InputPumpSet)
+                    .in_set(GameSet::EventProcessing),
+            )
             // === Physics Systems ===
             .add_systems(
                 Update,

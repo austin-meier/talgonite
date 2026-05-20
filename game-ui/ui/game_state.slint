@@ -122,6 +122,12 @@ export struct WorldLabel {
     health_percent: int,
 }
 
+export struct CastingIndicator {
+    visible: bool,
+    text: string,
+    progress: float,
+}
+
 export struct SpeechBubble {
     entity_id: int,
     text: styled-text,
@@ -245,6 +251,11 @@ export global GameState {
     in-out property <string> responsive-mode: "normal";
     in-out property <bool> responsive-compact: false;
     in-out property <bool> responsive-wide: false;
+    in-out property <CastingIndicator> casting-indicator: {
+        visible: false,
+        text: "Casting...",
+        progress: 0.0,
+    };
     in-out property <[WorldLabel]> world_labels: [];
     in-out property <[SpeechBubble]> speech_bubbles: [];
     in-out property <[ChatMessage]> chat-messages: [];

@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
 pub use game_ui::slint_types::{
-    ChatMessage, ContextMenuEntry, ContextMenuState, Cooldown, DragDropState, EquipmentSlotData,
-    GameState, GroupInviteNotification, GroupMember, HotbarEntry, InputBridge, InstallerState,
-    InventoryItem, LegendMarkData, LobbyState, LoginBridge, LoginState, MailBoardPost,
-    MailBoardState, MainWindow, MenuEntry, NpcDialogData, NpcDialogState, PlatformState,
-    ProfileData, SavedLoginItem, ServerItem, SettingsState, Skill, SlotPanelType, SocialStatus,
-    SocialStatusEntry, SocialStatusState, SpeechBubble, Spell, WorldLabel, WorldListMemberUi,
-    WorldMapNode,
+    CastingIndicator, ChatMessage, ContextMenuEntry, ContextMenuState, Cooldown, DragDropState,
+    EquipmentSlotData, GameState, GroupInviteNotification, GroupMember, HotbarEntry, InputBridge,
+    InstallerState, InventoryItem, LegendMarkData, LobbyState, LoginBridge, LoginState,
+    MailBoardPost, MailBoardState, MainWindow, MenuEntry, NpcDialogData, NpcDialogState,
+    PlatformState, ProfileData, SavedLoginItem, ServerItem, SettingsState, Skill, SlotPanelType,
+    SocialStatus, SocialStatusEntry, SocialStatusState, SpeechBubble, Spell, WorldLabel,
+    WorldListMemberUi, WorldMapNode,
 };
 
 #[cfg(target_os = "android")]

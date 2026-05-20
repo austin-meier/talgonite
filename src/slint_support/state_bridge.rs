@@ -139,7 +139,8 @@ pub fn sync_character_creator_preview_to_slint(
     let Some(strong) = win.0.upgrade() else {
         return;
     };
-    let state = slint::ComponentHandle::global::<game_ui::slint_types::CharacterCreationState>(&strong);
+    let state =
+        slint::ComponentHandle::global::<game_ui::slint_types::CharacterCreationState>(&strong);
 
     if let Some(target) = preview.target.as_ref() {
         if let Ok(image) = target.texture.clone().try_into() {
@@ -149,7 +150,6 @@ pub fn sync_character_creator_preview_to_slint(
 
     *last_version = preview.version;
 }
-
 
 fn parse_color_hex(hex: &str) -> slint::Brush {
     let hex = hex.trim_start_matches('#');
@@ -489,29 +489,33 @@ pub fn apply_core_to_slint(
                 }));
                 if login_error.is_some() {
                     login_state.set_is_submitting(false);
-                    let char_state = slint::ComponentHandle::global::<game_ui::slint_types::CharacterCreationState>(&strong);
+                    let char_state = slint::ComponentHandle::global::<
+                        game_ui::slint_types::CharacterCreationState,
+                    >(&strong);
                     char_state.set_is_submitting(false);
                     let error_message = match login_error.as_ref() {
                         Some(LoginError::Network(message)) => message.clone(),
-                        Some(LoginError::Response(packets::server::LoginMessageType::ClearNameMessage)) => {
-                            "That name is unavailable".to_string()
-                        }
-                        Some(LoginError::Response(packets::server::LoginMessageType::NameExistsOrReserved)) => {
-                            "That name already exists or contains a reserved string".to_string()
-                        }
-                        Some(LoginError::Response(packets::server::LoginMessageType::ClearPswdMessage)) => {
-                            "That password is invalid".to_string()
-                        }
-                        Some(LoginError::Response(packets::server::LoginMessageType::CharacterDoesntExist)) => {
-                            "Character does not exist".to_string()
-                        }
-                        Some(LoginError::Response(packets::server::LoginMessageType::WrongPassword)) => {
-                            "Wrong password".to_string()
-                        }
+                        Some(LoginError::Response(
+                            packets::server::LoginMessageType::ClearNameMessage,
+                        )) => "That name is unavailable".to_string(),
+                        Some(LoginError::Response(
+                            packets::server::LoginMessageType::NameExistsOrReserved,
+                        )) => "That name already exists or contains a reserved string".to_string(),
+                        Some(LoginError::Response(
+                            packets::server::LoginMessageType::ClearPswdMessage,
+                        )) => "That password is invalid".to_string(),
+                        Some(LoginError::Response(
+                            packets::server::LoginMessageType::CharacterDoesntExist,
+                        )) => "Character does not exist".to_string(),
+                        Some(LoginError::Response(
+                            packets::server::LoginMessageType::WrongPassword,
+                        )) => "Wrong password".to_string(),
                         Some(LoginError::Response(packets::server::LoginMessageType::Confirm)) => {
                             "Creation failed".to_string()
                         }
-                        Some(LoginError::Response(packets::server::LoginMessageType::Other(code))) => {
+                        Some(LoginError::Response(packets::server::LoginMessageType::Other(
+                            code,
+                        ))) => {
                             format!("Creation failed (code: {})", code)
                         }
                         Some(LoginError::Unknown) => "Creation failed".to_string(),
@@ -519,7 +523,9 @@ pub fn apply_core_to_slint(
                     };
                     char_state.set_error_message(slint::SharedString::from(error_message));
                 } else {
-                    let char_state = slint::ComponentHandle::global::<game_ui::slint_types::CharacterCreationState>(&strong);
+                    let char_state = slint::ComponentHandle::global::<
+                        game_ui::slint_types::CharacterCreationState,
+                    >(&strong);
                     char_state.set_is_submitting(false);
                     char_state.set_error_message(slint::SharedString::from(""));
                     // Also close the character creation window if we succeeded
@@ -1064,6 +1070,7 @@ pub fn sync_world_labels_to_slint(
         ),
         With<crate::ecs::components::LocalPlayer>,
     >,
+    spell_casting: Res<crate::ecs::spell_casting::SpellCastingState>,
     entities_query: Query<(
         Entity,
         &crate::ecs::components::Position,
@@ -1106,6 +1113,26 @@ pub fn sync_world_labels_to_slint(
 
     game_state.set_display_scale(zoom_state.display_scale());
     sync_responsive_state(&game_state, zoom_state.render_size);
+
+    let mut casting_indicator = crate::CastingIndicator {
+        visible: false,
+        text: slint::SharedString::from("Casting..."),
+        progress: 0.0,
+    };
+
+    if let Some(cast) = spell_casting.active_cast.as_ref() {
+        if cast.total_cast_lines > 0 {
+            let completed = cast.current_line.saturating_sub(1) as f32;
+            let progress = ((completed + cast.time_since_last_chant.min(1.0))
+                / cast.total_cast_lines as f32)
+                .clamp(0.0, 1.0);
+
+            casting_indicator.visible = true;
+            casting_indicator.progress = progress;
+        }
+    }
+
+    game_state.set_casting_indicator(casting_indicator);
 
     // Collect all label types from all entities
     let mut slint_labels: Vec<crate::WorldLabel> = Vec::new();

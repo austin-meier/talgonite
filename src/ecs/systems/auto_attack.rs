@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use packets::client::Spacebar;
 
-use crate::ecs::spell_casting::SpellCastingState;
+use crate::ecs::spell_casting::{SpellCastingState, SpellQueueState, SpellTargetingState};
 use crate::events::PlayerAction;
 use crate::network::PacketOutbox;
 
@@ -27,6 +27,8 @@ pub fn auto_attack_system(
     mut actions: MessageReader<PlayerAction>,
     outbox: Res<PacketOutbox>,
     mut spell_casting: ResMut<SpellCastingState>,
+    mut targeting_state: ResMut<SpellTargetingState>,
+    mut queue_state: ResMut<SpellQueueState>,
     mut auto_attack: ResMut<AutoAttackState>,
 ) {
     let mut trigger_attack = false;
@@ -61,6 +63,8 @@ pub fn auto_attack_system(
 
     if trigger_attack {
         spell_casting.active_cast = None;
+        targeting_state.pending_target = None;
+        queue_state.queued_spell = None;
         outbox.send(&Spacebar);
     }
 }

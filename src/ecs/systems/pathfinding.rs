@@ -7,7 +7,7 @@ use crate::ecs::components::{
     Direction, GameMap, ItemSprite, LocalPlayer, MovementTween, NPC, PathTarget, PathfindingState,
     Player, Position, occupied_tile,
 };
-use crate::ecs::spell_casting::SpellCastingState;
+use crate::ecs::spell_casting::{SpellCastingState, SpellTargetingState};
 use crate::events::{
     ClickSource, EntityClickEvent, InputSource, InteractionIntentAction, InteractionIntentEvent,
     InteractionTargetKind, PlayerAction, TileClickEvent,
@@ -71,7 +71,7 @@ pub fn pathfinding_target_system(
 }
 
 pub fn resolve_interaction_intents_system(
-    spell_casting: Res<SpellCastingState>,
+    targeting_state: Res<SpellTargetingState>,
     mut entity_clicks: MessageReader<EntityClickEvent>,
     mut tile_clicks: MessageReader<TileClickEvent>,
     entity_query: Query<(
@@ -83,11 +83,7 @@ pub fn resolve_interaction_intents_system(
     )>,
     mut interaction_intents: MessageWriter<InteractionIntentEvent>,
 ) {
-    let is_waiting_for_target = spell_casting
-        .active_cast
-        .as_ref()
-        .map(|cast| cast.waiting_for_target)
-        .unwrap_or(false);
+    let is_waiting_for_target = targeting_state.pending_target.is_some();
 
     if is_waiting_for_target {
         return;
@@ -267,11 +263,9 @@ pub fn pathfinding_execution_system(
         return;
     };
 
-    if let Some(ref cast) = spell_casting.active_cast {
-        if !cast.waiting_for_target {
-            // Wait for spell chant to finish before taking the next pathfinding step
-            return;
-        }
+    if spell_casting.active_cast.is_some() {
+        // Wait for an actual chant to finish before taking the next pathfinding step.
+        return;
     }
 
     let Ok(map) = map_query.single() else {

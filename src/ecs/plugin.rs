@@ -9,7 +9,7 @@ use tracing::{info, warn};
 use super::animation;
 use super::collision::WallCollisionTable;
 use super::social_status::LocalSocialStatus;
-use super::spell_casting::{self, SpellCastingState};
+use super::spell_casting::{self, SpellCastingState, SpellQueueState, SpellTargetingState};
 use super::systems::{self, GameSet};
 use crate::audio;
 
@@ -23,6 +23,8 @@ impl Plugin for GamePlugin {
         app.add_plugins(crate::ecs::macros::MacrosPlugin);
 
         app.init_resource::<SpellCastingState>()
+            .init_resource::<SpellTargetingState>()
+            .init_resource::<SpellQueueState>()
             .init_resource::<LocalSocialStatus>()
             .init_resource::<systems::AutoAttackState>()
             .init_resource::<crate::resources::LobbyPortraits>()

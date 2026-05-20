@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use crate::app_state::AppState;
 use crate::ecs::components::{EntityId, Hitbox, ItemSprite, LocalPlayer, NPC, Player, Position};
 use crate::ecs::interaction::HoveredEntity;
-use crate::ecs::spell_casting::SpellCastingState;
+use crate::ecs::spell_casting::SpellTargetingState;
 use crate::events::{
     ClickSource, EntityClickEvent, EntityHoverEvent, ResolvedPointerClickEvent, TileClickEvent,
     WallClickEvent, WorldContextAction, WorldContextMenuEntry,
@@ -166,14 +166,11 @@ fn handle_resolved_pointer_clicks(
     mut tile_click_events: MessageWriter<TileClickEvent>,
     mut wall_click_events: MessageWriter<WallClickEvent>,
     map_collision: Option<Res<crate::ecs::collision::MapCollisionData>>,
-    spell_casting: Res<SpellCastingState>,
+    targeting_state: Res<SpellTargetingState>,
     mut ui_outbound: MessageWriter<UiOutbound>,
     mut world_context_menu: ResMut<ActiveWorldContextMenu>,
 ) {
-    let is_waiting_for_target = spell_casting
-        .active_cast
-        .as_ref()
-        .map_or(false, |cast| cast.waiting_for_target);
+    let is_waiting_for_target = targeting_state.pending_target.is_some();
 
     for event in resolved_clicks.read() {
         let Some(hit_result) = hit_test_scene(
@@ -217,18 +214,14 @@ fn handle_resolved_pointer_clicks(
 
 fn handle_double_clicks(
     mut double_click_events: MessageReader<SlintDoubleClickEvent>,
-    spell_casting: Res<SpellCastingState>,
+    targeting_state: Res<SpellTargetingState>,
     camera: Res<Camera>,
     window_surface: Option<NonSend<WindowSurface>>,
     zoom_state: Option<Res<ZoomState>>,
     entity_query: Query<(Entity, &Position, Option<&Hitbox>)>,
     mut click_events: MessageWriter<EntityClickEvent>,
 ) {
-    if spell_casting
-        .active_cast
-        .as_ref()
-        .map_or(false, |c| c.waiting_for_target)
-    {
+    if targeting_state.pending_target.is_some() {
         return;
     }
 
@@ -284,7 +277,7 @@ fn handle_double_clicks(
 fn handle_entity_clicks(
     mut events: MessageReader<EntityClickEvent>,
     mut profile_events: MessageWriter<ShowSelfProfileEvent>,
-    spell_casting: Res<SpellCastingState>,
+    targeting_state: Res<SpellTargetingState>,
     query: Query<(
         &EntityId,
         &Position,
@@ -295,10 +288,7 @@ fn handle_entity_clicks(
     )>,
     outbox: Res<PacketOutbox>,
 ) {
-    let is_waiting_for_target = spell_casting
-        .active_cast
-        .as_ref()
-        .map_or(false, |c| c.waiting_for_target);
+    let is_waiting_for_target = targeting_state.pending_target.is_some();
 
     for event in events.read() {
         if is_waiting_for_target {

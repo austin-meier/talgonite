@@ -529,8 +529,20 @@ pub fn update_player_sprites(
                     (false, _) => Some((anim_type, progress)), // Standard animation
                 };
 
-                if let Some((at, p)) = target {
-                    if let Err(e) = batch_state.batch.update_player_sprite_with_animation(
+                let hide_sprite = || {
+                    let _ = batch_state
+                        .batch
+                        .hide_player_sprite(&shared_state.queue, &sprite_instance.handle);
+                };
+
+                let Some((at, p)) = target else {
+                    hide_sprite();
+                    continue;
+                };
+
+                if batch_state
+                    .batch
+                    .update_player_sprite_with_animation(
                         &shared_state.queue,
                         &store_state.store,
                         &sprite_instance.handle,
@@ -542,20 +554,10 @@ pub fn update_player_sprites(
                         p,
                         flags,
                         tint,
-                    ) {
-                        if at.is_emote() {
-                            // If emote fails (e.g. facing away), just hide the emote layer
-                            let _ = batch_state
-                                .batch
-                                .hide_player_sprite(&shared_state.queue, &sprite_instance.handle);
-                        } else if !anim_type.is_emote() {
-                            tracing::error!("update_player_sprite_with_animation failed: {:?}", e);
-                        }
-                    }
-                } else {
-                    let _ = batch_state
-                        .batch
-                        .hide_player_sprite(&shared_state.queue, &sprite_instance.handle);
+                    )
+                    .is_err()
+                {
+                    hide_sprite();
                 }
             }
         }

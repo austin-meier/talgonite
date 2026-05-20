@@ -334,10 +334,17 @@ pub fn player_animation_start_system(
 ) {
     use rendering::scene::players::PlayerPieceType;
 
+    let mut seen_animation_sources = std::collections::HashSet::new();
+
     for event in entity_events.read() {
         let EntityEvent::Animate(anim) = event else {
             continue;
         };
+
+        // Keep the first animation event we see for each source; later ones are dropped.
+        if !seen_animation_sources.insert(anim.source_id) {
+            continue;
+        }
 
         if let Some(sound) = anim.sound {
             audio_events.write(AudioEvent::PlaySound(Sound::Sound(sound)));

@@ -589,7 +589,7 @@ pub fn player_reconciliation_system(
                                 unconfirmed.recent_deltas.pop_front();
                             }
 
-                            if unconfirmed.recent_deltas.len() >= 2 {
+                            if unconfirmed.recent_deltas.len() >= 1 {
                                 let first = unconfirmed.recent_deltas[0];
                                 if unconfirmed
                                     .recent_deltas

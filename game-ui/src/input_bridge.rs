@@ -148,24 +148,24 @@ pub fn pump_slint_pointer_events_system(
 
         #[cfg(not(target_os = "android"))]
         {
-        let button = match event.button {
-            PointerEventButton::Left => Some(MouseButton::Left),
-            PointerEventButton::Right => Some(MouseButton::Right),
-            PointerEventButton::Middle => Some(MouseButton::Middle),
-            _ => None,
-        };
+            let button = match event.button {
+                PointerEventButton::Left => Some(MouseButton::Left),
+                PointerEventButton::Right => Some(MouseButton::Right),
+                PointerEventButton::Middle => Some(MouseButton::Middle),
+                _ => None,
+            };
 
-        if let Some(btn) = button {
-            match event.kind {
-                PointerEventKind::Down => {
-                    input.press(btn);
+            if let Some(btn) = button {
+                match event.kind {
+                    PointerEventKind::Down => {
+                        input.press(btn);
+                    }
+                    PointerEventKind::Up => {
+                        input.release(btn);
+                    }
+                    _ => {}
                 }
-                PointerEventKind::Up => {
-                    input.release(btn);
-                }
-                _ => {}
             }
-        }
         }
     }
 }
@@ -187,6 +187,7 @@ pub fn pump_slint_scroll_events_system(
             x: event.delta.0,
             y: event.delta.1,
             window: Entity::PLACEHOLDER,
+            phase: bevy::input::touch::TouchPhase::Moved,
         });
     }
 }

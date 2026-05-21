@@ -1,3 +1,5 @@
+use rand::RngExt;
+
 pub mod client;
 pub mod server;
 pub mod types;
@@ -39,7 +41,6 @@ pub trait ToBytes {
 
 pub fn dialog_encrypt(data: &[u8]) -> Vec<u8> {
     use crc::crc16;
-    use rand::Rng;
 
     let mut rng = rand::rng();
     let r1: u8 = rng.random();

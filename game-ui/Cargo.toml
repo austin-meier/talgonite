@@ -11,7 +11,7 @@ rendering.workspace = true
 packets.workspace = true
 regex = "1"
 
-bevy = { version = "0.18", default-features = false }
+bevy = { version = "0.19.0-rc.1", default-features = false }
 wgpu = "28"
 smol = "2.0"
 crossbeam-channel = "0.5"

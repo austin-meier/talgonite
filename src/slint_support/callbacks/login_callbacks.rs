@@ -1,7 +1,7 @@
 //! Login-related callback wiring for Slint UI.
 
 use crossbeam_channel::Sender;
-use rand::Rng;
+use rand::RngExt;
 use slint::ComponentHandle;
 
 use crate::webui::ipc::{ServerNoId, ServerWithId, UiToCore};

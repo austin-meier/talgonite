@@ -182,6 +182,10 @@ fn android_main(app: slint::android::AndroidApp) {
         .internal_data_path()
         .expect("Internal data path not available");
 
+    let store = android_native_keyring_store::Store::new()
+        .expect("Failed to initialize Android credentials store");
+    keyring_core::set_default_store(store);
+
     use slint::android::android_activity::{MainEvent, PollEvent};
     slint::android::init_with_event_listener(app, |event| {
         match event {

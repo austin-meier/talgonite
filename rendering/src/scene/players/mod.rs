@@ -4,7 +4,6 @@ pub mod types;
 pub use palettes::*;
 pub use types::*;
 
-use bincode::config::Configuration;
 use etagere::Allocation;
 use formats::epf::{AnimationDirection, EpfAnimation, EpfAnimationType};
 use glam::{Vec2, Vec3};
@@ -361,10 +360,7 @@ impl PlayerAssetStore {
     }
 
     fn decode_player_sprite(epf_bytes: &[u8]) -> anyhow::Result<DecodedPlayerSprite> {
-        let (epf_image, _) = bincode::decode_from_slice::<Vec<EpfAnimation>, Configuration>(
-            epf_bytes,
-            bincode::config::standard(),
-        )?;
+        let (epf_image, _) = oxicode::decode_from_slice::<Vec<EpfAnimation>>(epf_bytes)?;
 
         let mut animations = FxHashMap::default();
         let mut current_offset = 0;
@@ -642,8 +638,16 @@ impl PlayerBatch {
             AnimationDirection::Away
         };
 
-        let anim_data = loaded_sprite.animations.get(&(animation_type, anim_direction))
-            .ok_or_else(|| anyhow::anyhow!("Animation {:?} for direction {:?} not found", animation_type, anim_direction))?;
+        let anim_data = loaded_sprite
+            .animations
+            .get(&(animation_type, anim_direction))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Animation {:?} for direction {:?} not found",
+                    animation_type,
+                    anim_direction
+                )
+            })?;
 
         let frame_index = if anim_data.frame_count <= 1 {
             0

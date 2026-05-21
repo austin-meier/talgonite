@@ -1,7 +1,7 @@
-use bincode::{Decode, Encode};
 use byteorder::{LE, ReadBytesExt};
 use flate2::read::ZlibDecoder;
 use num_enum::TryFromPrimitive;
+use oxicode::{Decode, Encode};
 use std::io::{Read, Seek};
 
 #[derive(Encode, Decode, Debug, Clone)]

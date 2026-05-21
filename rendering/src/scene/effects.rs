@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use bincode::config::Configuration;
 use etagere::Allocation;
 use formats::efa::EfaFile;
 use formats::epf::EpfImage;
@@ -210,9 +209,9 @@ impl EffectManager {
             return rangemap::RangeMap::new();
         };
 
-        match bincode::serde::decode_from_slice::<rangemap::RangeMap<u16, u16>, _>(
+        match oxicode::serde::decode_from_slice::<rangemap::RangeMap<u16, u16>, _>(
             &data,
-            bincode::config::standard(),
+            oxicode::config::standard(),
         ) {
             Ok((map, _)) => map,
             Err(e) => {
@@ -284,11 +283,7 @@ impl EffectManager {
         data: &[u8],
         sequence: Option<Vec<usize>>,
     ) -> Option<()> {
-        let (efa, _) = bincode::decode_from_slice::<EfaFile, Configuration>(
-            &data,
-            bincode::config::standard(),
-        )
-        .ok()?;
+        let (efa, _) = oxicode::decode_from_slice::<EfaFile>(&data).ok()?;
 
         let mut allocations = Vec::with_capacity(efa.frames.len());
         let mut frame_widths = Vec::with_capacity(efa.frames.len());
@@ -342,8 +337,7 @@ impl EffectManager {
         let epf_path = format!("roh/efct{:03}.epf.bin", effect_id);
         let data = archive.get_file(&epf_path).ok()?;
 
-        let (epf, _) =
-            bincode::decode_from_slice::<EpfImage, _>(&data, bincode::config::standard()).ok()?;
+        let (epf, _) = oxicode::decode_from_slice::<EpfImage>(&data).ok()?;
 
         let palette_index = self.palette_indices.get(&effect_id).copied().unwrap_or(0) as u8;
         let palette = self.palette_data.as_ref()?;
@@ -360,7 +354,7 @@ impl EffectManager {
             if w > 0 && h > 0 {
                 let rgba_data = self.apply_palette(&frame.data, palette, palette_index);
 
-                let alloc = self.atlas.allocate(queue, w, h, &rgba_data);
+                let alloc = self.atlas.allocate(queue, w.into(), h.into(), &rgba_data);
                 allocations.push(alloc);
                 frame_widths.push(w as u16);
                 frame_heights.push(h as u16);

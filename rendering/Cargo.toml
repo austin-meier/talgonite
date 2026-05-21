@@ -10,7 +10,7 @@ bytemuck = { version = "1.24", features = ["derive"] }
 anyhow = "1"
 etagere = "0.2"
 rangemap = { version = "1.7", features = ["serde1"] }
-bincode = { version = "2.0", features = ["serde"] }
+oxicode = { version = "0.2", features = ["serde", "simd"] }
 byteorder = "1.5"
 ktx2 = "0.4"
 wgpu = "28"

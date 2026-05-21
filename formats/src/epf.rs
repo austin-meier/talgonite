@@ -1,18 +1,18 @@
-use bincode::{Decode, Encode};
+use oxicode::{Decode, Encode};
 
-#[derive(Clone, Encode, Decode)]
+#[derive(Clone, Encode, Decode, Debug, PartialEq)]
 pub struct EpfFrame {
-    pub top: usize,
-    pub left: usize,
-    pub bottom: usize,
-    pub right: usize,
+    pub top: u16,
+    pub left: u16,
+    pub bottom: u16,
+    pub right: u16,
     pub data: Vec<u8>,
 }
 
-#[derive(Clone, Encode, Decode)]
+#[derive(Clone, Encode, Decode, Debug, PartialEq)]
 pub struct EpfImage {
-    pub width: usize,
-    pub height: usize,
+    pub width: u16,
+    pub height: u16,
     pub frames: Vec<EpfFrame>,
 }
 
@@ -117,7 +117,7 @@ impl EpfAnimationType {
     }
 }
 
-#[derive(Clone, Encode, Decode)]
+#[derive(Clone, Decode, Encode)]
 pub struct EpfAnimation {
     pub animation_type: EpfAnimationType,
     pub direction: AnimationDirection,
@@ -125,13 +125,26 @@ pub struct EpfAnimation {
 }
 
 #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, Hash, Copy)]
+#[oxicode(tag_type = "u8")]
 pub enum AnimationDirection {
     Away,
     Towards,
 }
 
+const EMPTY_FRAME: EpfFrame = EpfFrame {
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    data: Vec::new(),
+};
+
 impl EpfFrame {
-    pub fn new(top: usize, left: usize, bottom: usize, right: usize, data: Vec<u8>) -> Self {
+    pub const fn new_empty() -> Self {
+        EMPTY_FRAME
+    }
+
+    pub fn new(top: u16, left: u16, bottom: u16, right: u16, data: Vec<u8>) -> Self {
         Self {
             top,
             left,

@@ -89,7 +89,7 @@ keyring = { version = "3", features = [
     "windows-native",
     "sync-secret-service",
 ] }
-bincode = { version = "2.0", features = ["derive"] }
+oxicode = { version = "0.2", features = ["simd"] }
 
 slint = { version = "1.16.1", default-features = false, features = [
     "backend-default",

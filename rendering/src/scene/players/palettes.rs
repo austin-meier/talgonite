@@ -67,7 +67,7 @@ impl PlayerPalettes {
         fn load(archive: &Archive, path: &str) -> anyhow::Result<RangeMap<u16, u16>> {
             let data = archive.get_file(path)?;
             let (base_palette_table, _): (rangemap::RangeMap<u16, u16>, usize) =
-                bincode::serde::decode_from_slice(&data, bincode::config::standard())?;
+                oxicode::serde::decode_from_slice(&data, oxicode::config::standard())?;
             Ok(base_palette_table)
         }
 

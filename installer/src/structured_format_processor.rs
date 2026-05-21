@@ -33,7 +33,7 @@ impl StructuredFormatProcessor {
 
             let mut reader = Cursor::new(file_buffer);
             let mpf = MpfFile::read_from_da(&mut reader).expect("Failed to read MPF file");
-            let mpf_bytes = bincode::encode_to_vec(mpf, bincode::config::standard())?;
+            let mpf_bytes = oxicode::encode_to_vec(&mpf)?;
 
             return Ok(StructuredDatEntry::Assets(vec![AssetRecord::bytes(
                 dat_path.join(file_name.replace(".mpf", ".mpf.bin")),
@@ -48,7 +48,7 @@ impl StructuredFormatProcessor {
             let mut reader = Cursor::new(file_buffer);
             return match EfaFile::read_from_da(&mut reader) {
                 Ok(efa) => {
-                    let efa_bytes = bincode::encode_to_vec(efa, bincode::config::standard())?;
+                    let efa_bytes = oxicode::encode_to_vec(&efa)?;
                     Ok(StructuredDatEntry::Assets(vec![AssetRecord::bytes(
                         dat_path.join(file_name.replace(".efa", ".efa.bin")),
                         efa_bytes,
@@ -73,7 +73,7 @@ impl StructuredFormatProcessor {
                 });
             }
 
-            let epf_bytes = bincode::encode_to_vec(epf, bincode::config::standard())?;
+            let epf_bytes = oxicode::encode_to_vec(&epf)?;
             return Ok(StructuredDatEntry::Assets(vec![AssetRecord::bytes(
                 dat_path.join(file_name.replace(".epf", ".epf.bin")),
                 epf_bytes,
@@ -121,17 +121,22 @@ fn read_epf(file_buffer: &[u8]) -> anyhow::Result<EpfImage> {
         let bytes_available = file_buffer.len() - start_address;
 
         if width == 0 || height == 0 || bytes_to_read > bytes_available {
-            frames.push(EpfFrame::new(0, 0, 0, 0, vec![]));
+            frames.push(EpfFrame::new_empty());
             continue;
         }
 
-        let data = file_buffer[start_address..(start_address + bytes_to_read)].to_vec();
-        frames.push(EpfFrame::new(top, left, bottom, right, data));
+        frames.push(EpfFrame::new(
+            top as u16,
+            left as u16,
+            bottom as u16,
+            right as u16,
+            file_buffer[start_address..(start_address + bytes_to_read)].to_vec(),
+        ));
     }
 
     Ok(EpfImage {
-        width: pixel_width,
-        height: pixel_height,
+        width: pixel_width as u16,
+        height: pixel_height as u16,
         frames,
     })
 }

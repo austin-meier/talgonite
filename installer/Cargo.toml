@@ -9,7 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1"
-bincode = { version = "2.0", features = ["serde"] }
+oxicode = { version = "0.2", features = ["serde", "simd"] }
 byteorder = "1.5"
 circbuf = "0.2"
 crc32fast = { version = "1", features = ["nightly"] }

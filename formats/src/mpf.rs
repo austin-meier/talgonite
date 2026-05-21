@@ -1,5 +1,5 @@
-use bincode::{Decode, Encode};
 use byteorder::{LE, ReadBytesExt};
+use oxicode::{Decode, Encode};
 
 use crate::epf::AnimationDirection;
 
@@ -239,9 +239,13 @@ impl MpfFile {
             .cloned()
             .collect();
 
-        let has_standing = final_anims.iter().any(|a| a.animation_type == MpfAnimationType::Standing);
+        let has_standing = final_anims
+            .iter()
+            .any(|a| a.animation_type == MpfAnimationType::Standing);
         if !has_standing {
-            let walk_anim = final_anims.iter().find(|a| a.animation_type == MpfAnimationType::Walk);
+            let walk_anim = final_anims
+                .iter()
+                .find(|a| a.animation_type == MpfAnimationType::Walk);
             if let Some(walk_anim) = walk_anim {
                 final_anims.push(MpfAnimation {
                     animation_type: MpfAnimationType::Standing,

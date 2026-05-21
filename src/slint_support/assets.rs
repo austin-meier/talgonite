@@ -14,7 +14,7 @@ impl SlintAssetLoader {
             .get_file("Legend/item.tbl.bin")
             .expect("item palette table missing");
         let (item_palette_table, _): (rangemap::RangeMap<u16, u16>, usize) =
-            bincode::serde::decode_from_slice(&table_data, bincode::config::standard()).unwrap();
+            oxicode::serde::decode_from_slice(&table_data, oxicode::config::standard()).unwrap();
 
         Self { item_palette_table }
     }
@@ -80,8 +80,7 @@ impl SlintAssetLoader {
             .get_file(&mpf_path)
             .ok_or_else(|| format!("MPF not found: {}", mpf_path))?;
         let (mpf_file, _): (formats::mpf::MpfFile, _) =
-            bincode::decode_from_slice(&mpf_bytes, bincode::config::standard())
-                .map_err(|e| e.to_string())?;
+            oxicode::decode_from_slice(&mpf_bytes).map_err(|e| e.to_string())?;
 
         let frame_index = if let Some(anim) = mpf_file
             .animations
@@ -245,8 +244,7 @@ impl SlintAssetLoader {
         }
 
         let (epf_image, _): (formats::epf::EpfImage, _) =
-            bincode::decode_from_slice(&epf_bytes, bincode::config::standard())
-                .map_err(|e| format!("decode epf: {e}"))?;
+            oxicode::decode_from_slice(&epf_bytes).map_err(|e| format!("decode epf: {e}"))?;
 
         if frame_index >= epf_image.frames.len() {
             return Err("frame index out of range".into());

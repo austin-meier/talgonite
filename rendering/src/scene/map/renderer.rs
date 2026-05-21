@@ -220,13 +220,13 @@ impl MapRenderer {
         let mpt_data = archive.get_file_or_panic("seo/mpt.tbl.bin");
 
         let (tile_palette_table, _): (rangemap::RangeMap<u16, u16>, usize) =
-            bincode::serde::decode_from_slice(&mpt_data, bincode::config::standard()).unwrap();
+            oxicode::serde::decode_from_slice(&mpt_data, oxicode::config::standard()).unwrap();
 
         let wall_table_name = format!("ia/st{}.tbl.bin", if is_snow { "s" } else { "c" });
         let wall_table_data = archive.get_file_or_panic(&wall_table_name);
 
         let (wall_palette_table, _): (rangemap::RangeMap<u16, u16>, usize) =
-            bincode::serde::decode_from_slice(&wall_table_data, bincode::config::standard())
+            oxicode::serde::decode_from_slice(&wall_table_data, oxicode::config::standard())
                 .unwrap();
 
         let build_tile_instance = |floor: &FloorTile, x, y| -> Instance {

@@ -22,7 +22,7 @@ slint = { version = "1.16.1", default-features = false, features = [
     "unstable-wgpu-28",
     "renderer-skia",
 ] }
-bincode = { version = "2.0", features = ["derive"] }
+oxicode = { version = "0.2", features = ["simd"] }
 serde = { version = "1.0", features = ["derive"] }
 
 [build-dependencies]

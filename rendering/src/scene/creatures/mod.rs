@@ -1,7 +1,6 @@
 pub mod types;
 pub use types::*;
 
-use bincode::config::Configuration;
 use formats::{
     epf::AnimationDirection,
     mpf::{MpfAnimation, MpfAnimationType, MpfFile},
@@ -143,10 +142,7 @@ impl CreatureBatch {
                         anyhow::anyhow!("Failed to load MPF for sprite {}: {}", sprite_id, e)
                     })?;
 
-                let (mpf_file, _) = bincode::decode_from_slice::<MpfFile, Configuration>(
-                    &mpf_bytes,
-                    bincode::config::standard(),
-                )?;
+                let (mpf_file, _) = oxicode::decode_from_slice::<MpfFile>(&mpf_bytes)?;
 
                 let mut allocations: Vec<etagere::Allocation> =
                     Vec::with_capacity(mpf_file.frames.len());
@@ -192,7 +188,10 @@ impl CreatureBatch {
             index: instance_index,
             sprite_id,
         };
-        self.handles.lock().unwrap().insert(handle.index, handle.sprite_id);
+        self.handles
+            .lock()
+            .unwrap()
+            .insert(handle.index, handle.sprite_id);
 
         Ok(AddCreatureResult {
             handle,

@@ -100,7 +100,7 @@ impl AnimationProcessor {
                     })
                     .collect::<Vec<_>>();
 
-                let buf = bincode::encode_to_vec(epf_animations, bincode::config::standard())?;
+                let buf = oxicode::encode_to_vec(&epf_animations)?;
 
                 if prefix.starts_with('m') {
                     for cleanup in KHAN_CLEANUP_COPIES.iter() {

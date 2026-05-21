@@ -126,7 +126,7 @@ impl PaletteProcessor {
 
                     if !tree.is_empty() {
                         let tbl =
-                            bincode::serde::encode_to_vec(&tree, bincode::config::standard())?;
+                            oxicode::serde::encode_to_vec(&tree, oxicode::config::standard())?;
                         records.push(AssetRecord::bytes(
                             dat_path.join(format!("{}{}.tbl.bin", palette_name, suffix)),
                             tbl,

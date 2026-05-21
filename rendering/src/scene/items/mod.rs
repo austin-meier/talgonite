@@ -1,7 +1,6 @@
 pub mod types;
 pub use types::*;
 
-use bincode::config::Configuration;
 use etagere::AtlasAllocator;
 use formats::epf::EpfImage;
 use glam::Vec2;
@@ -65,7 +64,7 @@ impl ItemAssetStore {
             .get_file("Legend/item.tbl.bin")
             .expect("item palette table missing");
         let (palette_table, _): (rangemap::RangeMap<u16, u16>, usize) =
-            bincode::serde::decode_from_slice(&palette_table_data, bincode::config::standard())
+            oxicode::serde::decode_from_slice(&palette_table_data, oxicode::config::standard())
                 .unwrap();
 
         let tb = TextureBind::default();
@@ -99,10 +98,7 @@ impl ItemAssetStore {
         }
         let path = format!("Legend/item{:03}.epf.bin", sheet_index);
         let bytes = archive.get_file(&path)?;
-        let (epf, _) = bincode::decode_from_slice::<EpfImage, Configuration>(
-            &bytes,
-            bincode::config::standard(),
-        )?;
+        let (epf, _) = oxicode::decode_from_slice::<EpfImage>(&bytes)?;
         let mut allocations: Vec<Option<etagere::Allocation>> =
             Vec::with_capacity(epf.frames.len());
         allocations.resize(epf.frames.len(), None);
@@ -276,7 +272,10 @@ impl ItemBatch {
             index: idx,
             sprite_id: item.sprite,
         };
-        self.handles.lock().unwrap().insert(handle.index, handle.sprite_id);
+        self.handles
+            .lock()
+            .unwrap()
+            .insert(handle.index, handle.sprite_id);
         Some(handle)
     }
 

@@ -11,6 +11,7 @@ use crate::{
     settings_types::Settings,
 };
 use bevy::prelude::*;
+use bevy::prelude::MessageReader;
 use game_types::SlotPanelType;
 use packets::client::RefreshRequest;
 use std::time::Duration;
@@ -148,6 +149,7 @@ impl Plugin for InputPlugin {
                     gamepad_rebinding_system,
                     crate::input::gamepad::gamepad_connection_system,
                     input_handling_system.run_if(in_state(AppState::InGame)),
+                    reset_walk_timer_on_map_change_system.run_if(in_state(AppState::InGame)),
                 )
                     .chain()
                     .after(InputPumpSet)
@@ -410,6 +412,17 @@ fn initialize_input_bindings(
     commands.insert_resource(bindings);
 
     *unified = UnifiedInputBindings::from_settings(&settings.key_bindings);
+}
+
+pub fn reset_walk_timer_on_map_change_system(
+    mut input_timer: ResMut<InputTimer>,
+    mut map_events: MessageReader<crate::events::MapEvent>,
+) {
+    for event in map_events.read() {
+        if let crate::events::MapEvent::Clear = event {
+            *input_timer = InputTimer::default();
+        }
+    }
 }
 
 pub fn input_handling_system(

@@ -58,7 +58,6 @@ pub fn wire_login_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
 
     // Initial character randomization
     {
-        use rand::Rng;
         let mut rng = rand::rng();
         let char_state = slint_app.global::<game_ui::slint_types::CharacterCreationState>();
         let gender = if rng.random_bool(0.5) {

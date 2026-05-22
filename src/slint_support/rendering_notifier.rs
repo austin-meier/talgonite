@@ -51,7 +51,7 @@ pub fn handle_before_rendering<W: slint::ComponentHandle>(
         if in_game && render_size.0 > 0 && render_size.1 > 0 {
             let needs_resize = app
                 .world()
-                .get_non_send_resource::<WindowSurface>()
+                .get_non_send::<WindowSurface>()
                 .map(|surface| {
                     surface.width != render_size.0
                         || surface.height != render_size.1

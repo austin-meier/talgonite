@@ -45,7 +45,7 @@ pub fn initialize_gpu_world(
         scene,
     });
     // Safety: surface tied to window lifetime which matches app lifetime.
-    world.insert_non_send_resource(WindowSurface {
+    world.insert_non_send(WindowSurface {
         width: size.width,
         height: size.height,
         scale_factor: window.scale_factor(),

@@ -198,7 +198,7 @@ pub fn attach_slint_ui(mut app: App) -> MainWindow {
             }
         },
     );
-    app.borrow_mut().insert_non_send_resource(timer);
+    app.borrow_mut().insert_non_send(timer);
 
     slint_app
 }

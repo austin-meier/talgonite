@@ -108,38 +108,7 @@ pub struct InputBindings {
 
 impl InputBindings {
     pub fn new() -> Self {
-        let mut bindings = std::collections::HashMap::new();
-        bindings.insert(GameAction::MoveUp, vec![KeyBinding::new(KeyCode::ArrowUp)]);
-        bindings.insert(
-            GameAction::MoveDown,
-            vec![KeyBinding::new(KeyCode::ArrowDown)],
-        );
-        bindings.insert(
-            GameAction::MoveLeft,
-            vec![KeyBinding::new(KeyCode::ArrowLeft)],
-        );
-        bindings.insert(
-            GameAction::MoveRight,
-            vec![KeyBinding::new(KeyCode::ArrowRight)],
-        );
-        bindings.insert(GameAction::Inventory, vec![KeyBinding::new(KeyCode::KeyI)]);
-        bindings.insert(GameAction::Skills, vec![KeyBinding::new(KeyCode::KeyK)]);
-        bindings.insert(GameAction::Spells, vec![KeyBinding::new(KeyCode::KeyP)]);
-        bindings.insert(GameAction::Settings, vec![KeyBinding::new(KeyCode::Escape)]);
-        bindings.insert(GameAction::Refresh, vec![KeyBinding::new(KeyCode::F5)]);
-        bindings.insert(
-            GameAction::ToggleOverview,
-            vec![KeyBinding::new(KeyCode::Tab)],
-        );
-        bindings.insert(
-            GameAction::BasicAttack,
-            vec![KeyBinding::new(KeyCode::Space)],
-        );
-        bindings.insert(
-            GameAction::AutoAttackToggle,
-            vec![KeyBinding::new(KeyCode::KeyT)],
-        );
-        Self { bindings }
+        Self::from_settings(&KeyBindings::default())
     }
 
     pub fn from_settings(settings: &KeyBindings) -> Self {

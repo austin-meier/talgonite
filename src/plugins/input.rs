@@ -10,8 +10,8 @@ use crate::{
     network::PacketOutbox,
     settings_types::Settings,
 };
-use bevy::prelude::*;
 use bevy::prelude::MessageReader;
+use bevy::prelude::*;
 use game_types::SlotPanelType;
 use packets::client::RefreshRequest;
 use std::time::Duration;
@@ -298,7 +298,8 @@ fn resolve_android_touch_events_system(
 
 #[derive(Resource)]
 pub struct InputTimer {
-    walk_cd: Timer,            // gates actual movement (walk)
+    walk_cd: Timer, // gates actual movement (walk)
+    repeat_state: game_input::ActionRepeatState,
     primed: bool,              // first walk allowed immediately
     turn_grace: Option<Timer>, // suppress walking right after a facing change
 }
@@ -307,6 +308,7 @@ impl Default for InputTimer {
     fn default() -> Self {
         Self {
             walk_cd: Timer::from_seconds(0.0, TimerMode::Once), // finished immediately
+            repeat_state: Default::default(),
             primed: true,
             turn_grace: None,
         }
@@ -458,11 +460,13 @@ pub fn input_handling_system(
         outbox.send(&RefreshRequest);
     }
 
-    if bindings.is_just_pressed(
+    if bindings.is_just_pressed_or_repeated(
         GameAction::BasicAttack,
         &keyboard_input,
         Some(&gamepad_query),
         Some(&gamepad_config),
+        &mut input_timer.repeat_state,
+        &time,
     ) {
         player_actions.write(PlayerAction::BasicAttack);
     }
@@ -576,11 +580,13 @@ pub fn input_handling_system(
 
     // Hotbar slot activation
     for (i, action) in HOTBAR_SLOT_ACTIONS.iter().enumerate() {
-        if bindings.is_just_pressed(
+        if bindings.is_just_pressed_or_repeated(
             *action,
             &keyboard_input,
             Some(&gamepad_query),
             Some(&gamepad_config),
+            &mut input_timer.repeat_state,
+            &time,
         ) {
             let Some((category, slot_index)) =
                 resolve_hotbar_slot_target(i, &hotbar_panel_state, &settings)

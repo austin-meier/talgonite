@@ -1,7 +1,29 @@
-use super::{GameAction, GamepadConfig, GamepadInputType, KeyBinding};
+use super::{GameAction, GamepadConfig, GamepadInputType, InputBindings, KeyBinding};
 use bevy::input::ButtonInput;
 use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
+use std::collections::HashMap;
+
+#[derive(Resource, Default)]
+pub struct ActionRepeatState {
+    timers: HashMap<GameAction, Timer>,
+}
+
+impl ActionRepeatState {
+    fn timer_for(
+        &mut self,
+        action: GameAction,
+        repeat_interval: std::time::Duration,
+    ) -> &mut Timer {
+        self.timers.entry(action).or_insert_with(|| {
+            Timer::from_seconds(repeat_interval.as_secs_f32(), TimerMode::Repeating)
+        })
+    }
+
+    fn clear(&mut self, action: GameAction) {
+        self.timers.remove(&action);
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InputSource {
@@ -37,92 +59,28 @@ impl UnifiedInputBindings {
     }
 
     pub fn with_defaults() -> Self {
-        use bevy::input::gamepad::GamepadButton;
-
         let mut bindings = std::collections::HashMap::new();
+        let keyboard_defaults = InputBindings::new();
 
-        bindings.insert(
-            GameAction::MoveUp,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::ArrowUp)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::DPadUp)),
-                InputSource::Gamepad(GamepadInputType::LeftStickUp),
-            ],
-        );
-        bindings.insert(
-            GameAction::MoveDown,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::ArrowDown)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::DPadDown)),
-                InputSource::Gamepad(GamepadInputType::LeftStickDown),
-            ],
-        );
-        bindings.insert(
-            GameAction::MoveLeft,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::ArrowLeft)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::DPadLeft)),
-                InputSource::Gamepad(GamepadInputType::LeftStickLeft),
-            ],
-        );
-        bindings.insert(
-            GameAction::MoveRight,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::ArrowRight)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::DPadRight)),
-                InputSource::Gamepad(GamepadInputType::LeftStickRight),
-            ],
-        );
-        bindings.insert(
-            GameAction::Inventory,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::KeyI)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::North)),
-            ],
-        );
-        bindings.insert(
-            GameAction::Skills,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::KeyK)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::West)),
-            ],
-        );
-        bindings.insert(
-            GameAction::Spells,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::KeyP)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::East)),
-            ],
-        );
-        bindings.insert(
-            GameAction::Settings,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::Escape)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::Start)),
-            ],
-        );
-        bindings.insert(
-            GameAction::Refresh,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::F5)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::Select)),
-            ],
-        );
-        bindings.insert(
-            GameAction::ToggleOverview,
-            vec![InputSource::Keyboard(KeyBinding::new(KeyCode::Tab))],
-        );
-        bindings.insert(
-            GameAction::BasicAttack,
-            vec![
-                InputSource::Keyboard(KeyBinding::new(KeyCode::Space)),
-                InputSource::Gamepad(GamepadInputType::Button(GamepadButton::South)),
-            ],
-        );
-        bindings.insert(
-            GameAction::AutoAttackToggle,
-            vec![InputSource::Keyboard(KeyBinding::new(KeyCode::KeyT))],
-        );
+        for action in GameAction::all() {
+            let mut sources = Vec::new();
+
+            if let Some(key_bindings) = keyboard_defaults.get(*action) {
+                sources.extend(key_bindings.iter().cloned().map(InputSource::Keyboard));
+            }
+
+            sources.extend(
+                action
+                    .default_gamepad_inputs()
+                    .iter()
+                    .copied()
+                    .map(InputSource::Gamepad),
+            );
+
+            if !sources.is_empty() {
+                bindings.insert(*action, sources);
+            }
+        }
 
         Self { bindings }
     }
@@ -348,6 +306,38 @@ impl UnifiedInputBindings {
         }
 
         false
+    }
+
+    pub fn is_just_pressed_or_repeated(
+        &self,
+        action: GameAction,
+        keyboard: &ButtonInput<KeyCode>,
+        gamepad_query: Option<&Query<&Gamepad>>,
+        gamepad_config: Option<&GamepadConfig>,
+        repeat_state: &mut ActionRepeatState,
+        time: &Time,
+    ) -> bool {
+        if self.is_just_pressed(action, keyboard, gamepad_query, gamepad_config) {
+            if let Some(interval) = action.repeat_interval() {
+                repeat_state.timer_for(action, interval).reset();
+            }
+            return true;
+        }
+
+        let Some(interval) = action.repeat_interval() else {
+            repeat_state.clear(action);
+            return false;
+        };
+
+        if !self.is_pressed(action, keyboard, gamepad_query, gamepad_config) {
+            repeat_state.clear(action);
+            return false;
+        }
+
+        repeat_state
+            .timer_for(action, interval)
+            .tick(time.delta())
+            .just_finished()
     }
 
     pub fn any_pressed(

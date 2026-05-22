@@ -1,376 +1,177 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum GameAction {
-    MoveUp,
-    MoveDown,
-    MoveLeft,
-    MoveRight,
-    Inventory,
-    Skills,
-    Spells,
-    Settings,
-    Refresh,
-    ToggleOverview,
-    BasicAttack,
-    AutoAttackToggle,
-    ItemPickupBelow,
-    HotbarSlot1,
-    HotbarSlot2,
-    HotbarSlot3,
-    HotbarSlot4,
-    HotbarSlot5,
-    HotbarSlot6,
-    HotbarSlot7,
-    HotbarSlot8,
-    HotbarSlot9,
-    HotbarSlot10,
-    HotbarSlot11,
-    HotbarSlot12,
-    HotbarSlot13,
-    HotbarSlot14,
-    HotbarSlot15,
-    HotbarSlot16,
-    HotbarSlot17,
-    HotbarSlot18,
-    HotbarSlot19,
-    HotbarSlot20,
-    HotbarSlot21,
-    HotbarSlot22,
-    HotbarSlot23,
-    HotbarSlot24,
-    HotbarSlot25,
-    HotbarSlot26,
-    HotbarSlot27,
-    HotbarSlot28,
-    HotbarSlot29,
-    HotbarSlot30,
-    HotbarSlot31,
-    HotbarSlot32,
-    HotbarSlot33,
-    HotbarSlot34,
-    HotbarSlot35,
-    HotbarSlot36,
-    HotbarSlot37,
-    HotbarSlot38,
-    HotbarSlot39,
-    HotbarSlot40,
-    HotbarSlot41,
-    HotbarSlot42,
-    HotbarSlot43,
-    HotbarSlot44,
-    HotbarSlot45,
-    HotbarSlot46,
-    HotbarSlot47,
-    HotbarSlot48,
-    SwitchToInventory,
-    SwitchToSkills,
-    SwitchToSpells,
-    SwitchToHotbar1,
-    SwitchToHotbar2,
-    SwitchToHotbar3,
+use std::time::Duration;
+
+use bevy::input::gamepad::GamepadButton;
+use bevy::input::keyboard::KeyCode;
+
+use crate::gamepad::GamepadInputType;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameActionMode {
+    Edge,
+    Continuous,
+    Repeat { interval: Duration },
 }
 
-impl GameAction {
-    pub fn all() -> &'static [GameAction] {
-        &[
-            GameAction::MoveUp,
-            GameAction::MoveDown,
-            GameAction::MoveLeft,
-            GameAction::MoveRight,
-            GameAction::Inventory,
-            GameAction::Skills,
-            GameAction::Spells,
-            GameAction::Settings,
-            GameAction::Refresh,
-            GameAction::ToggleOverview,
-            GameAction::BasicAttack,
-            GameAction::AutoAttackToggle,
-            GameAction::ItemPickupBelow,
-            GameAction::HotbarSlot1,
-            GameAction::HotbarSlot2,
-            GameAction::HotbarSlot3,
-            GameAction::HotbarSlot4,
-            GameAction::HotbarSlot5,
-            GameAction::HotbarSlot6,
-            GameAction::HotbarSlot7,
-            GameAction::HotbarSlot8,
-            GameAction::HotbarSlot9,
-            GameAction::HotbarSlot10,
-            GameAction::HotbarSlot11,
-            GameAction::HotbarSlot12,
-            GameAction::HotbarSlot13,
-            GameAction::HotbarSlot14,
-            GameAction::HotbarSlot15,
-            GameAction::HotbarSlot16,
-            GameAction::HotbarSlot17,
-            GameAction::HotbarSlot18,
-            GameAction::HotbarSlot19,
-            GameAction::HotbarSlot20,
-            GameAction::HotbarSlot21,
-            GameAction::HotbarSlot22,
-            GameAction::HotbarSlot23,
-            GameAction::HotbarSlot24,
-            GameAction::HotbarSlot25,
-            GameAction::HotbarSlot26,
-            GameAction::HotbarSlot27,
-            GameAction::HotbarSlot28,
-            GameAction::HotbarSlot29,
-            GameAction::HotbarSlot30,
-            GameAction::HotbarSlot31,
-            GameAction::HotbarSlot32,
-            GameAction::HotbarSlot33,
-            GameAction::HotbarSlot34,
-            GameAction::HotbarSlot35,
-            GameAction::HotbarSlot36,
-            GameAction::HotbarSlot37,
-            GameAction::HotbarSlot38,
-            GameAction::HotbarSlot39,
-            GameAction::HotbarSlot40,
-            GameAction::HotbarSlot41,
-            GameAction::HotbarSlot42,
-            GameAction::HotbarSlot43,
-            GameAction::HotbarSlot44,
-            GameAction::HotbarSlot45,
-            GameAction::HotbarSlot46,
-            GameAction::HotbarSlot47,
-            GameAction::HotbarSlot48,
-            GameAction::SwitchToInventory,
-            GameAction::SwitchToSkills,
-            GameAction::SwitchToSpells,
-            GameAction::SwitchToHotbar1,
-            GameAction::SwitchToHotbar2,
-            GameAction::SwitchToHotbar3,
-        ]
-    }
-
-    pub fn action_id(&self) -> &'static str {
-        match self {
-            GameAction::MoveUp => "move_up",
-            GameAction::MoveDown => "move_down",
-            GameAction::MoveLeft => "move_left",
-            GameAction::MoveRight => "move_right",
-            GameAction::Inventory => "inventory",
-            GameAction::Skills => "skills",
-            GameAction::Spells => "spells",
-            GameAction::Settings => "settings",
-            GameAction::Refresh => "refresh",
-            GameAction::ToggleOverview => "toggle_overview",
-            GameAction::BasicAttack => "basic_attack",
-            GameAction::AutoAttackToggle => "auto_attack_toggle",
-            GameAction::ItemPickupBelow => "item_pickup_below",
-            GameAction::HotbarSlot1 => "hotbar_slot_1",
-            GameAction::HotbarSlot2 => "hotbar_slot_2",
-            GameAction::HotbarSlot3 => "hotbar_slot_3",
-            GameAction::HotbarSlot4 => "hotbar_slot_4",
-            GameAction::HotbarSlot5 => "hotbar_slot_5",
-            GameAction::HotbarSlot6 => "hotbar_slot_6",
-            GameAction::HotbarSlot7 => "hotbar_slot_7",
-            GameAction::HotbarSlot8 => "hotbar_slot_8",
-            GameAction::HotbarSlot9 => "hotbar_slot_9",
-            GameAction::HotbarSlot10 => "hotbar_slot_10",
-            GameAction::HotbarSlot11 => "hotbar_slot_11",
-            GameAction::HotbarSlot12 => "hotbar_slot_12",
-            GameAction::HotbarSlot13 => "hotbar_slot_13",
-            GameAction::HotbarSlot14 => "hotbar_slot_14",
-            GameAction::HotbarSlot15 => "hotbar_slot_15",
-            GameAction::HotbarSlot16 => "hotbar_slot_16",
-            GameAction::HotbarSlot17 => "hotbar_slot_17",
-            GameAction::HotbarSlot18 => "hotbar_slot_18",
-            GameAction::HotbarSlot19 => "hotbar_slot_19",
-            GameAction::HotbarSlot20 => "hotbar_slot_20",
-            GameAction::HotbarSlot21 => "hotbar_slot_21",
-            GameAction::HotbarSlot22 => "hotbar_slot_22",
-            GameAction::HotbarSlot23 => "hotbar_slot_23",
-            GameAction::HotbarSlot24 => "hotbar_slot_24",
-            GameAction::HotbarSlot25 => "hotbar_slot_25",
-            GameAction::HotbarSlot26 => "hotbar_slot_26",
-            GameAction::HotbarSlot27 => "hotbar_slot_27",
-            GameAction::HotbarSlot28 => "hotbar_slot_28",
-            GameAction::HotbarSlot29 => "hotbar_slot_29",
-            GameAction::HotbarSlot30 => "hotbar_slot_30",
-            GameAction::HotbarSlot31 => "hotbar_slot_31",
-            GameAction::HotbarSlot32 => "hotbar_slot_32",
-            GameAction::HotbarSlot33 => "hotbar_slot_33",
-            GameAction::HotbarSlot34 => "hotbar_slot_34",
-            GameAction::HotbarSlot35 => "hotbar_slot_35",
-            GameAction::HotbarSlot36 => "hotbar_slot_36",
-            GameAction::HotbarSlot37 => "hotbar_slot_37",
-            GameAction::HotbarSlot38 => "hotbar_slot_38",
-            GameAction::HotbarSlot39 => "hotbar_slot_39",
-            GameAction::HotbarSlot40 => "hotbar_slot_40",
-            GameAction::HotbarSlot41 => "hotbar_slot_41",
-            GameAction::HotbarSlot42 => "hotbar_slot_42",
-            GameAction::HotbarSlot43 => "hotbar_slot_43",
-            GameAction::HotbarSlot44 => "hotbar_slot_44",
-            GameAction::HotbarSlot45 => "hotbar_slot_45",
-            GameAction::HotbarSlot46 => "hotbar_slot_46",
-            GameAction::HotbarSlot47 => "hotbar_slot_47",
-            GameAction::HotbarSlot48 => "hotbar_slot_48",
-            GameAction::SwitchToInventory => "switch_to_inventory",
-            GameAction::SwitchToSkills => "switch_to_skills",
-            GameAction::SwitchToSpells => "switch_to_spells",
-            GameAction::SwitchToHotbar1 => "switch_to_hotbar_1",
-            GameAction::SwitchToHotbar2 => "switch_to_hotbar_2",
-            GameAction::SwitchToHotbar3 => "switch_to_hotbar_3",
+macro_rules! define_game_actions {
+    (
+        $(
+            $variant:ident {
+                id: $id:literal,
+                label: $label:literal,
+                mode: $mode:expr
+                $(,
+                    keyboard: $keyboard:expr,
+                    gamepad: $gamepad:expr
+                )?
+            }
+        ),+ $(,)?
+    ) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub enum GameAction {
+            $(
+                $variant,
+            )+
         }
-    }
 
-    pub fn from_action_id(id: &str) -> Option<Self> {
-        match id {
-            "move_up" => Some(GameAction::MoveUp),
-            "move_down" => Some(GameAction::MoveDown),
-            "move_left" => Some(GameAction::MoveLeft),
-            "move_right" => Some(GameAction::MoveRight),
-            "inventory" => Some(GameAction::Inventory),
-            "skills" => Some(GameAction::Skills),
-            "spells" => Some(GameAction::Spells),
-            "settings" => Some(GameAction::Settings),
-            "refresh" => Some(GameAction::Refresh),
-            "toggle_overview" => Some(GameAction::ToggleOverview),
-            "basic_attack" => Some(GameAction::BasicAttack),
-            "auto_attack_toggle" => Some(GameAction::AutoAttackToggle),
-            "item_pickup_below" => Some(GameAction::ItemPickupBelow),
-            "hotbar_slot_1" => Some(GameAction::HotbarSlot1),
-            "hotbar_slot_2" => Some(GameAction::HotbarSlot2),
-            "hotbar_slot_3" => Some(GameAction::HotbarSlot3),
-            "hotbar_slot_4" => Some(GameAction::HotbarSlot4),
-            "hotbar_slot_5" => Some(GameAction::HotbarSlot5),
-            "hotbar_slot_6" => Some(GameAction::HotbarSlot6),
-            "hotbar_slot_7" => Some(GameAction::HotbarSlot7),
-            "hotbar_slot_8" => Some(GameAction::HotbarSlot8),
-            "hotbar_slot_9" => Some(GameAction::HotbarSlot9),
-            "hotbar_slot_10" => Some(GameAction::HotbarSlot10),
-            "hotbar_slot_11" => Some(GameAction::HotbarSlot11),
-            "hotbar_slot_12" => Some(GameAction::HotbarSlot12),
-            "hotbar_slot_13" => Some(GameAction::HotbarSlot13),
-            "hotbar_slot_14" => Some(GameAction::HotbarSlot14),
-            "hotbar_slot_15" => Some(GameAction::HotbarSlot15),
-            "hotbar_slot_16" => Some(GameAction::HotbarSlot16),
-            "hotbar_slot_17" => Some(GameAction::HotbarSlot17),
-            "hotbar_slot_18" => Some(GameAction::HotbarSlot18),
-            "hotbar_slot_19" => Some(GameAction::HotbarSlot19),
-            "hotbar_slot_20" => Some(GameAction::HotbarSlot20),
-            "hotbar_slot_21" => Some(GameAction::HotbarSlot21),
-            "hotbar_slot_22" => Some(GameAction::HotbarSlot22),
-            "hotbar_slot_23" => Some(GameAction::HotbarSlot23),
-            "hotbar_slot_24" => Some(GameAction::HotbarSlot24),
-            "hotbar_slot_25" => Some(GameAction::HotbarSlot25),
-            "hotbar_slot_26" => Some(GameAction::HotbarSlot26),
-            "hotbar_slot_27" => Some(GameAction::HotbarSlot27),
-            "hotbar_slot_28" => Some(GameAction::HotbarSlot28),
-            "hotbar_slot_29" => Some(GameAction::HotbarSlot29),
-            "hotbar_slot_30" => Some(GameAction::HotbarSlot30),
-            "hotbar_slot_31" => Some(GameAction::HotbarSlot31),
-            "hotbar_slot_32" => Some(GameAction::HotbarSlot32),
-            "hotbar_slot_33" => Some(GameAction::HotbarSlot33),
-            "hotbar_slot_34" => Some(GameAction::HotbarSlot34),
-            "hotbar_slot_35" => Some(GameAction::HotbarSlot35),
-            "hotbar_slot_36" => Some(GameAction::HotbarSlot36),
-            "hotbar_slot_37" => Some(GameAction::HotbarSlot37),
-            "hotbar_slot_38" => Some(GameAction::HotbarSlot38),
-            "hotbar_slot_39" => Some(GameAction::HotbarSlot39),
-            "hotbar_slot_40" => Some(GameAction::HotbarSlot40),
-            "hotbar_slot_41" => Some(GameAction::HotbarSlot41),
-            "hotbar_slot_42" => Some(GameAction::HotbarSlot42),
-            "hotbar_slot_43" => Some(GameAction::HotbarSlot43),
-            "hotbar_slot_44" => Some(GameAction::HotbarSlot44),
-            "hotbar_slot_45" => Some(GameAction::HotbarSlot45),
-            "hotbar_slot_46" => Some(GameAction::HotbarSlot46),
-            "hotbar_slot_47" => Some(GameAction::HotbarSlot47),
-            "hotbar_slot_48" => Some(GameAction::HotbarSlot48),
-            "switch_to_inventory" => Some(GameAction::SwitchToInventory),
-            "switch_to_skills" => Some(GameAction::SwitchToSkills),
-            "switch_to_spells" => Some(GameAction::SwitchToSpells),
-            "switch_to_hotbar_1" => Some(GameAction::SwitchToHotbar1),
-            "switch_to_hotbar_2" => Some(GameAction::SwitchToHotbar2),
-            "switch_to_hotbar_3" => Some(GameAction::SwitchToHotbar3),
-            _ => None,
-        }
-    }
+        impl GameAction {
+            pub fn mode(&self) -> GameActionMode {
+                match self {
+                    $(
+                        Self::$variant => $mode,
+                    )+
+                }
+            }
 
-    pub fn label(&self) -> &'static str {
-        match self {
-            GameAction::MoveUp => "Move Up",
-            GameAction::MoveDown => "Move Down",
-            GameAction::MoveLeft => "Move Left",
-            GameAction::MoveRight => "Move Right",
-            GameAction::Inventory => "Inventory",
-            GameAction::Skills => "Skills",
-            GameAction::Spells => "Spells",
-            GameAction::Settings => "Settings",
-            GameAction::Refresh => "Refresh",
-            GameAction::ToggleOverview => "Tab overview",
-            GameAction::BasicAttack => "Basic Attack",
-            GameAction::AutoAttackToggle => "Auto Attack Toggle",
-            GameAction::ItemPickupBelow => "Item Pickup",
-            GameAction::HotbarSlot1 => "Slot 1",
-            GameAction::HotbarSlot2 => "Slot 2",
-            GameAction::HotbarSlot3 => "Slot 3",
-            GameAction::HotbarSlot4 => "Slot 4",
-            GameAction::HotbarSlot5 => "Slot 5",
-            GameAction::HotbarSlot6 => "Slot 6",
-            GameAction::HotbarSlot7 => "Slot 7",
-            GameAction::HotbarSlot8 => "Slot 8",
-            GameAction::HotbarSlot9 => "Slot 9",
-            GameAction::HotbarSlot10 => "Slot 10",
-            GameAction::HotbarSlot11 => "Slot 11",
-            GameAction::HotbarSlot12 => "Slot 12",
-            GameAction::HotbarSlot13 => "Slot 13",
-            GameAction::HotbarSlot14 => "Slot 14",
-            GameAction::HotbarSlot15 => "Slot 15",
-            GameAction::HotbarSlot16 => "Slot 16",
-            GameAction::HotbarSlot17 => "Slot 17",
-            GameAction::HotbarSlot18 => "Slot 18",
-            GameAction::HotbarSlot19 => "Slot 19",
-            GameAction::HotbarSlot20 => "Slot 20",
-            GameAction::HotbarSlot21 => "Slot 21",
-            GameAction::HotbarSlot22 => "Slot 22",
-            GameAction::HotbarSlot23 => "Slot 23",
-            GameAction::HotbarSlot24 => "Slot 24",
-            GameAction::HotbarSlot25 => "Slot 25",
-            GameAction::HotbarSlot26 => "Slot 26",
-            GameAction::HotbarSlot27 => "Slot 27",
-            GameAction::HotbarSlot28 => "Slot 28",
-            GameAction::HotbarSlot29 => "Slot 29",
-            GameAction::HotbarSlot30 => "Slot 30",
-            GameAction::HotbarSlot31 => "Slot 31",
-            GameAction::HotbarSlot32 => "Slot 32",
-            GameAction::HotbarSlot33 => "Slot 33",
-            GameAction::HotbarSlot34 => "Slot 34",
-            GameAction::HotbarSlot35 => "Slot 35",
-            GameAction::HotbarSlot36 => "Slot 36",
-            GameAction::HotbarSlot37 => "Slot 37",
-            GameAction::HotbarSlot38 => "Slot 38",
-            GameAction::HotbarSlot39 => "Slot 39",
-            GameAction::HotbarSlot40 => "Slot 40",
-            GameAction::HotbarSlot41 => "Slot 41",
-            GameAction::HotbarSlot42 => "Slot 42",
-            GameAction::HotbarSlot43 => "Slot 43",
-            GameAction::HotbarSlot44 => "Slot 44",
-            GameAction::HotbarSlot45 => "Slot 45",
-            GameAction::HotbarSlot46 => "Slot 46",
-            GameAction::HotbarSlot47 => "Slot 47",
-            GameAction::HotbarSlot48 => "Slot 48",
-            GameAction::SwitchToInventory => "Inventory Panel",
-            GameAction::SwitchToSkills => "Skills Panel",
-            GameAction::SwitchToSpells => "Spells Panel",
-            GameAction::SwitchToHotbar1 => "Hotbar 1",
-            GameAction::SwitchToHotbar2 => "Hotbar 2",
-            GameAction::SwitchToHotbar3 => "Hotbar 3",
+            pub fn repeat_interval(&self) -> Option<Duration> {
+                match self.mode() {
+                    GameActionMode::Repeat { interval } => Some(interval),
+                    _ => None,
+                }
+            }
+
+            pub fn all() -> &'static [GameAction] {
+                &[
+                    $(
+                        GameAction::$variant,
+                    )+
+                ]
+            }
+
+            pub fn action_id(&self) -> &'static str {
+                match self {
+                    $(
+                        Self::$variant => $id,
+                    )+
+                }
+            }
+
+            pub fn from_action_id(id: &str) -> Option<Self> {
+                match id {
+                    $(
+                        $id => Some(Self::$variant),
+                    )+
+                    _ => None,
+                }
+            }
+
+            pub fn label(&self) -> &'static str {
+                match self {
+                    $(
+                        Self::$variant => $label,
+                    )+
+                }
+            }
+
+            pub fn default_keyboard_key(&self) -> Option<KeyCode> {
+                match self {
+                    $(
+                        Self::$variant => define_game_actions!(@keyboard $($keyboard)?),
+                    )+
+                }
+            }
+
+            pub fn default_gamepad_inputs(&self) -> &'static [GamepadInputType] {
+                match self {
+                    $(
+                        Self::$variant => define_game_actions!(@gamepad $($gamepad)?),
+                    )+
+                }
+            }
         }
-    }
+    };
+
+    (@keyboard $keyboard:expr) => { $keyboard };
+    (@keyboard) => { None };
+    (@gamepad $gamepad:expr) => { $gamepad };
+    (@gamepad) => { &[] };
 }
 
-#[cfg(test)]
-mod tests {
-    use super::GameAction;
-
-    #[test]
-    fn toggle_overview_action_round_trips() {
-        assert_eq!(GameAction::ToggleOverview.action_id(), "toggle_overview");
-        assert_eq!(
-            GameAction::from_action_id("toggle_overview"),
-            Some(GameAction::ToggleOverview)
-        );
-        assert!(GameAction::all().contains(&GameAction::ToggleOverview));
-    }
+define_game_actions! {
+    MoveUp { id: "move_up", label: "Move Up", mode: GameActionMode::Continuous, keyboard: Some(KeyCode::ArrowUp), gamepad: &[GamepadInputType::Button(GamepadButton::DPadUp), GamepadInputType::LeftStickUp] },
+    MoveDown { id: "move_down", label: "Move Down", mode: GameActionMode::Continuous, keyboard: Some(KeyCode::ArrowDown), gamepad: &[GamepadInputType::Button(GamepadButton::DPadDown), GamepadInputType::LeftStickDown] },
+    MoveLeft { id: "move_left", label: "Move Left", mode: GameActionMode::Continuous, keyboard: Some(KeyCode::ArrowLeft), gamepad: &[GamepadInputType::Button(GamepadButton::DPadLeft), GamepadInputType::LeftStickLeft] },
+    MoveRight { id: "move_right", label: "Move Right", mode: GameActionMode::Continuous, keyboard: Some(KeyCode::ArrowRight), gamepad: &[GamepadInputType::Button(GamepadButton::DPadRight), GamepadInputType::LeftStickRight] },
+    Inventory { id: "inventory", label: "Inventory", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyI), gamepad: &[GamepadInputType::Button(GamepadButton::North)] },
+    Skills { id: "skills", label: "Skills", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyK), gamepad: &[GamepadInputType::Button(GamepadButton::West)] },
+    Spells { id: "spells", label: "Spells", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyP), gamepad: &[GamepadInputType::Button(GamepadButton::East)] },
+    Settings { id: "settings", label: "Settings", mode: GameActionMode::Edge, keyboard: Some(KeyCode::Escape), gamepad: &[GamepadInputType::Button(GamepadButton::Start)] },
+    Refresh { id: "refresh", label: "Refresh", mode: GameActionMode::Edge, keyboard: Some(KeyCode::F5), gamepad: &[GamepadInputType::Button(GamepadButton::Select)] },
+    ToggleOverview { id: "toggle_overview", label: "Tab overview", mode: GameActionMode::Edge, keyboard: Some(KeyCode::Tab), gamepad: &[] },
+    BasicAttack { id: "basic_attack", label: "Basic Attack", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Space), gamepad: &[GamepadInputType::Button(GamepadButton::South)] },
+    AutoAttackToggle { id: "auto_attack_toggle", label: "Auto Attack Toggle", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyT), gamepad: &[] },
+    ItemPickupBelow { id: "item_pickup_below", label: "Item Pickup", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyB), gamepad: &[] },
+    HotbarSlot1 { id: "hotbar_slot_1", label: "Slot 1", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit1), gamepad: &[] },
+    HotbarSlot2 { id: "hotbar_slot_2", label: "Slot 2", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit2), gamepad: &[] },
+    HotbarSlot3 { id: "hotbar_slot_3", label: "Slot 3", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit3), gamepad: &[] },
+    HotbarSlot4 { id: "hotbar_slot_4", label: "Slot 4", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit4), gamepad: &[] },
+    HotbarSlot5 { id: "hotbar_slot_5", label: "Slot 5", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit5), gamepad: &[] },
+    HotbarSlot6 { id: "hotbar_slot_6", label: "Slot 6", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit6), gamepad: &[] },
+    HotbarSlot7 { id: "hotbar_slot_7", label: "Slot 7", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit7), gamepad: &[] },
+    HotbarSlot8 { id: "hotbar_slot_8", label: "Slot 8", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit8), gamepad: &[] },
+    HotbarSlot9 { id: "hotbar_slot_9", label: "Slot 9", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit9), gamepad: &[] },
+    HotbarSlot10 { id: "hotbar_slot_10", label: "Slot 10", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit0), gamepad: &[] },
+    HotbarSlot11 { id: "hotbar_slot_11", label: "Slot 11", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Minus), gamepad: &[] },
+    HotbarSlot12 { id: "hotbar_slot_12", label: "Slot 12", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Equal), gamepad: &[] },
+    HotbarSlot13 { id: "hotbar_slot_13", label: "Slot 13", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit1), gamepad: &[] },
+    HotbarSlot14 { id: "hotbar_slot_14", label: "Slot 14", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit2), gamepad: &[] },
+    HotbarSlot15 { id: "hotbar_slot_15", label: "Slot 15", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit3), gamepad: &[] },
+    HotbarSlot16 { id: "hotbar_slot_16", label: "Slot 16", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit4), gamepad: &[] },
+    HotbarSlot17 { id: "hotbar_slot_17", label: "Slot 17", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit5), gamepad: &[] },
+    HotbarSlot18 { id: "hotbar_slot_18", label: "Slot 18", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit6), gamepad: &[] },
+    HotbarSlot19 { id: "hotbar_slot_19", label: "Slot 19", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit7), gamepad: &[] },
+    HotbarSlot20 { id: "hotbar_slot_20", label: "Slot 20", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit8), gamepad: &[] },
+    HotbarSlot21 { id: "hotbar_slot_21", label: "Slot 21", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit9), gamepad: &[] },
+    HotbarSlot22 { id: "hotbar_slot_22", label: "Slot 22", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit0), gamepad: &[] },
+    HotbarSlot23 { id: "hotbar_slot_23", label: "Slot 23", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Minus), gamepad: &[] },
+    HotbarSlot24 { id: "hotbar_slot_24", label: "Slot 24", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Equal), gamepad: &[] },
+    HotbarSlot25 { id: "hotbar_slot_25", label: "Slot 25", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit1), gamepad: &[] },
+    HotbarSlot26 { id: "hotbar_slot_26", label: "Slot 26", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit2), gamepad: &[] },
+    HotbarSlot27 { id: "hotbar_slot_27", label: "Slot 27", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit3), gamepad: &[] },
+    HotbarSlot28 { id: "hotbar_slot_28", label: "Slot 28", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit4), gamepad: &[] },
+    HotbarSlot29 { id: "hotbar_slot_29", label: "Slot 29", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit5), gamepad: &[] },
+    HotbarSlot30 { id: "hotbar_slot_30", label: "Slot 30", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit6), gamepad: &[] },
+    HotbarSlot31 { id: "hotbar_slot_31", label: "Slot 31", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit7), gamepad: &[] },
+    HotbarSlot32 { id: "hotbar_slot_32", label: "Slot 32", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit8), gamepad: &[] },
+    HotbarSlot33 { id: "hotbar_slot_33", label: "Slot 33", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit9), gamepad: &[] },
+    HotbarSlot34 { id: "hotbar_slot_34", label: "Slot 34", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit0), gamepad: &[] },
+    HotbarSlot35 { id: "hotbar_slot_35", label: "Slot 35", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Minus), gamepad: &[] },
+    HotbarSlot36 { id: "hotbar_slot_36", label: "Slot 36", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Equal), gamepad: &[] },
+    HotbarSlot37 { id: "hotbar_slot_37", label: "Slot 37", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit1), gamepad: &[] },
+    HotbarSlot38 { id: "hotbar_slot_38", label: "Slot 38", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit2), gamepad: &[] },
+    HotbarSlot39 { id: "hotbar_slot_39", label: "Slot 39", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit3), gamepad: &[] },
+    HotbarSlot40 { id: "hotbar_slot_40", label: "Slot 40", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit4), gamepad: &[] },
+    HotbarSlot41 { id: "hotbar_slot_41", label: "Slot 41", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit5), gamepad: &[] },
+    HotbarSlot42 { id: "hotbar_slot_42", label: "Slot 42", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit6), gamepad: &[] },
+    HotbarSlot43 { id: "hotbar_slot_43", label: "Slot 43", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit7), gamepad: &[] },
+    HotbarSlot44 { id: "hotbar_slot_44", label: "Slot 44", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit8), gamepad: &[] },
+    HotbarSlot45 { id: "hotbar_slot_45", label: "Slot 45", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit9), gamepad: &[] },
+    HotbarSlot46 { id: "hotbar_slot_46", label: "Slot 46", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Digit0), gamepad: &[] },
+    HotbarSlot47 { id: "hotbar_slot_47", label: "Slot 47", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Minus), gamepad: &[] },
+    HotbarSlot48 { id: "hotbar_slot_48", label: "Slot 48", mode: GameActionMode::Repeat { interval: Duration::from_millis(250) }, keyboard: Some(KeyCode::Equal), gamepad: &[] },
+    SwitchToInventory { id: "switch_to_inventory", label: "Inventory Panel", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyA), gamepad: &[] },
+    SwitchToSkills { id: "switch_to_skills", label: "Skills Panel", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyS), gamepad: &[] },
+    SwitchToSpells { id: "switch_to_spells", label: "Spells Panel", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyD), gamepad: &[] },
+    SwitchToHotbar1 { id: "switch_to_hotbar_1", label: "Hotbar 1", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyF), gamepad: &[] },
+    SwitchToHotbar2 { id: "switch_to_hotbar_2", label: "Hotbar 2", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyG), gamepad: &[] },
+    SwitchToHotbar3 { id: "switch_to_hotbar_3", label: "Hotbar 3", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyH), gamepad: &[] },
 }

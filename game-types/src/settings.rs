@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[repr(u8)]
 pub enum XRaySize {
+    #[default]
     Off = 0,
     Small = 1,
-    #[default]
     Medium = 2,
     Large = 3,
 }

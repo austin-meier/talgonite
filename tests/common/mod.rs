@@ -34,8 +34,8 @@ impl TestScene {
     pub fn new() -> Self {
         let storage_root = storage_root();
         let storage_config = talgonite_lib::StorageConfig::new(storage_root.clone());
-        let archive = ArxArchive::new(storage_config.data_arx_path())
-            .expect("Failed to open archive");
+        let archive =
+            ArxArchive::new(storage_config.data_arx_path()).expect("Failed to open archive");
         let maps_dir = storage_config.server_maps_dir(1);
 
         let (device, queue) = pollster::block_on(async {
@@ -75,9 +75,9 @@ impl TestScene {
         app.add_plugins(MinimalPlugins)
             .add_plugins(bevy::input::InputPlugin)
             .add_plugins((
-            talgonite_lib::CorePlugin,
-            talgonite_lib::render_plugin::game::RenderManagersPlugin,
-        ));
+                talgonite_lib::CorePlugin,
+                talgonite_lib::render_plugin::game::RenderManagersPlugin,
+            ));
 
         app.insert_resource(talgonite_lib::game_files::GameFiles::from_archive(
             archive.clone(),

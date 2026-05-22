@@ -14,6 +14,10 @@ Characters can be created now with an interface that's close to the official cli
 
 - Player idle animations are now visible on characters showing off their flashy accessories and weapons and stuff
 
+## Make "X-ray" off similar to official
+
+When xray is off it now acts similar to the official client. Also turned off x-ray by default.
+
 # Version 0.1.8 (2026-05-12)
 
 ## Boards / Posts

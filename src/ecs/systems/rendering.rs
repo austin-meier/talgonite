@@ -21,9 +21,16 @@ use rendering::{
     },
 };
 
-fn player_instance_state(render_state: &PlayerRenderState) -> InstanceFlag {
+fn player_instance_state(
+    render_state: &PlayerRenderState,
+    is_local_player: bool,
+    settings: &Settings,
+) -> InstanceFlag {
     if render_state.translucent {
         InstanceFlag::Translucent
+    } else if is_local_player && settings.graphics.xray_size == crate::settings_types::XRaySize::Off
+    {
+        InstanceFlag::XRay
     } else {
         InstanceFlag::None
     }
@@ -393,15 +400,24 @@ pub fn sync_players_to_renderer(
         &Player,
         &EntityId,
         &PlayerRenderState,
+        Option<&LocalPlayer>,
         Option<&TargetingHover>,
     )>,
+    settings: Res<Settings>,
     mut store_state: ResMut<PlayerAssetStoreState>,
     batch_state: Res<PlayerBatchState>,
 ) {
     let mut sprites_to_add = Vec::new();
     for (sprite_entity, child_of, sprite) in added_sprites.iter() {
-        if let Ok((position, direction, player, entity_id, render_state, targeting_hover)) =
-            player_query.get(child_of.parent())
+        if let Ok((
+            position,
+            direction,
+            player,
+            entity_id,
+            render_state,
+            local_player,
+            targeting_hover,
+        )) = player_query.get(child_of.parent())
         {
             sprites_to_add.push((
                 sprite_entity,
@@ -412,6 +428,7 @@ pub fn sync_players_to_renderer(
                 player,
                 entity_id,
                 render_state,
+                local_player,
                 targeting_hover,
             ));
         }
@@ -419,7 +436,7 @@ pub fn sync_players_to_renderer(
 
     let sprite_keys: Vec<PlayerSpriteKey> = sprites_to_add
         .iter()
-        .map(|(_, _, sprite, _, _, player, _, _, _)| {
+        .map(|(_, _, sprite, _, _, player, _, _, _, _)| {
             let gender = if player.is_male {
                 Gender::Male
             } else {
@@ -440,6 +457,7 @@ pub fn sync_players_to_renderer(
         player,
         entity_id,
         render_state,
+        local_player,
         targeting_hover,
     ) in sprites_to_add
     {
@@ -450,7 +468,7 @@ pub fn sync_players_to_renderer(
         };
 
         let tint = targeting_hover.map(|t| t.tint).unwrap_or(Vec3::ZERO);
-        let flags = player_instance_state(render_state);
+        let flags = player_instance_state(render_state, local_player.is_some(), &settings);
         let result = batch_state.batch.add_player_sprite(
             &shared_state.queue,
             &mut store_state.store,
@@ -478,6 +496,7 @@ pub fn update_player_sprites(
     shared_state: Res<RendererState>,
     store_state: Res<PlayerAssetStoreState>,
     batch_state: Res<PlayerBatchState>,
+    settings: Res<Settings>,
     parent_query: Query<(
         Entity,
         &Position,
@@ -485,6 +504,7 @@ pub fn update_player_sprites(
         Option<&Animation>,
         Option<&crate::ecs::animation::AnimationTimer>,
         &PlayerRenderState,
+        Option<&LocalPlayer>,
         Option<&TargetingHover>,
         &Children,
         &EntityId,
@@ -500,6 +520,7 @@ pub fn update_player_sprites(
         animation,
         animation_timer,
         render_state,
+        local_player,
         targeting_hover,
         children,
         _entity_id,
@@ -517,7 +538,7 @@ pub fn update_player_sprites(
         };
 
         let tint = targeting_hover.map(|t| t.tint).unwrap_or(Vec3::ZERO);
-        let flags = player_instance_state(render_state);
+        let flags = player_instance_state(render_state, local_player.is_some(), &settings);
 
         for child_entity in children.iter() {
             if let Ok((sprite, sprite_instance)) = children_query.get(child_entity) {

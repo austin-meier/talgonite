@@ -74,6 +74,7 @@ var t_depth: texture_depth_2d;
 
 const INSTANCE_FLAG_XRAY: u32 = 1u;
 const INSTANCE_FLAG_TRANSLUCENT: u32 = 4u;
+const LEGACY_XRAY_DEPTH_OFFSET: f32 = 0.2;
 
 fn is_translucent_player(flags: u32) -> bool {
     return (flags & INSTANCE_FLAG_TRANSLUCENT) != 0u;
@@ -111,8 +112,13 @@ fn shade_fragment(in: VertexOutput) -> vec4<f32> {
     // Use Euclidean distance (circle in tile space, ellipse on screen)
     let dist = length(vec2<f32>(tile_dx, tile_dy));
 
-    // X-Ray effect for local player (only when xray_size > 0)
-    if (in.flags & INSTANCE_FLAG_XRAY) != 0u && camera.xray_size > 0.0 {
+    // X-Ray effect for local player.
+    var xray_size = 1.5;
+    if camera.xray_size > 0.0 {
+        xray_size = camera.xray_size;
+    }
+
+    if (in.flags & INSTANCE_FLAG_XRAY) != 0u {
         // Use screen coords to calculate player position
         let a = camera.position.x / 28.0;
         let b = camera.position.y / 14.0;
@@ -136,8 +142,8 @@ fn shade_fragment(in: VertexOutput) -> vec4<f32> {
 
             let xray_pos = delta - vec2<f32>(0.0, -20.0);
             // Scale ellipse dimensions by xray_size (base: 20px width, 30px height)
-            let scaled_width = 20.0 * camera.xray_size;
-            let scaled_height = 30.0 * camera.xray_size;
+            let scaled_width = 20.0 * xray_size;
+            let scaled_height = 30.0 * xray_size;
             let xray_dist = length(vec2<f32>(xray_pos.x / scaled_width, xray_pos.y / scaled_height));
 
             // Bayer 8x8 ordered dither for smooth transparency
@@ -185,13 +191,30 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 }
 
 @fragment
-fn fs_translucent_player(in: VertexOutput) -> @location(0) vec4<f32> {
-    if !is_translucent_player(in.flags) {
+struct TranslucentPlayerOutput {
+    @location(0) color: vec4<f32>,
+    @builtin(frag_depth) depth: f32,
+}
+
+@fragment
+fn fs_translucent_player(in: VertexOutput) -> TranslucentPlayerOutput {
+    if !is_translucent_player(in.flags) && (in.flags & INSTANCE_FLAG_XRAY) == 0u {
         discard;
     }
 
     // Compose translucent players opaquely inside the offscreen pass so paper-doll
     // layers continue to occlude each other. The whole-player alpha is applied
     // later during the fullscreen composite.
-    return shade_fragment(in);
+    var out: TranslucentPlayerOutput;
+    out.color = shade_fragment(in);
+
+    // Legacy self-visibility should render above occluders, but only for the
+    // local-player xray overlay path (xray_size == Off).
+    if (in.flags & INSTANCE_FLAG_XRAY) != 0u && camera.xray_size <= 0.0 {
+        out.depth = min(0.999, in.clip_position.z + LEGACY_XRAY_DEPTH_OFFSET);
+    } else {
+        out.depth = in.clip_position.z;
+    }
+
+    return out;
 }

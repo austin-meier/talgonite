@@ -87,7 +87,7 @@ impl Default for Settings {
                 sfx_volume: 0.7,
             },
             graphics: GraphicsSettings {
-                xray_size: XRaySize::Medium,
+                xray_size: XRaySize::Off,
                 scale: 1.0,
                 high_quality_scaling: true,
             },

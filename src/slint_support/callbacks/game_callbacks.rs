@@ -284,6 +284,13 @@ pub fn wire_game_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
             });
         });
     }
+    {
+        let tx = tx.clone();
+        game_state.on_drop_gold(move |text: slint::SharedString| {
+            let amount = text.trim().parse::<i32>().unwrap_or(0);
+            let _ = tx.send(UiToCore::DropGold { amount });
+        });
+    }
 
     // Drag-drop action
     let dragdrop_state = slint_app.global::<DragDropState>();

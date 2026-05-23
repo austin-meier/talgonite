@@ -237,6 +237,10 @@ pub enum UiToCore {
     RaiseStat {
         stat: String,
     },
+    /// User clicked the drop gold button in the character panel.
+    DropGold {
+        amount: i32,
+    },
 }
 
 /// A menu entry that can be a text option or an item with sprite

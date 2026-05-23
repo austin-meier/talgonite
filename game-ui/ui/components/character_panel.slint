@@ -1,6 +1,6 @@
 import { GameState } from "../game_state.slint";
 import { Theme } from "../theme.slint";
-import { VerticalBox, HorizontalBox } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, LineEdit } from "std-widgets.slint";
 import { BasePanel } from "./base_panel.slint";
 import { SkillList, SpellList } from "./skill_list.slint";
 
@@ -138,6 +138,168 @@ component InfoRow inherits Rectangle {
     }
 }
 
+// Gold row with an amount input and drop button shown when gold > 0.
+component GoldRow inherits Rectangle {
+    height: GameState.player-gold > 0 ? 52px : 24px;
+
+    VerticalLayout {
+        spacing: 4px;
+
+        // Label + current gold amount
+        HorizontalBox {
+            height: 24px;
+            padding-left: Theme.spacing-small;
+            padding-right: Theme.spacing-small;
+            spacing: 0px;
+
+            Text {
+                text: "Gold";
+                color: Theme.foreground-muted;
+                font-size: Theme.font-size-xsmall;
+                font-weight: 700;
+                vertical-alignment: center;
+                width: 72px;
+            }
+
+            val-box := Rectangle {
+                height: 18px;
+                background: Theme.surface-card;
+                border-radius: Theme.radius-small;
+                border-width: 1px;
+                border-color: Theme.border-muted;
+                y: (parent.height - self.height) / 2;
+                HorizontalLayout {
+                    padding-left: 4px;
+                    padding-right: 4px;
+                    Text {
+                        text: GameState.player-gold;
+                        color: Theme.foreground-strong;
+                        font-size: Theme.font-size-xsmall;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                }
+            }
+        }
+
+        // Amount input + drop button — only when player has gold
+        if GameState.player-gold > 0: HorizontalLayout {
+            height: 24px;
+            padding-left: Theme.spacing-small;
+            padding-right: Theme.spacing-small;
+            spacing: 4px;
+
+            Text {
+                text: "Amount";
+                color: Theme.foreground-muted;
+                font-size: Theme.font-size-xsmall;
+                vertical-alignment: center;
+                width: 48px;
+            }
+
+            amount-edit := LineEdit {
+                text: "" + GameState.player-gold;
+                font-size: Theme.font-size-xsmall;
+                horizontal-stretch: 1;
+            }
+
+            drop-btn := Rectangle {
+                width: 44px;
+                height: 22px;
+                border-radius: Theme.radius-small;
+                border-width: 1px;
+                border-color: drop-touch.has-hover ? Theme.accent : Theme.border-muted;
+                background: drop-touch.pressed ? Theme.accent-subtle : drop-touch.has-hover ? Theme.surface-secondary : Theme.surface-muted;
+                y: (parent.height - self.height) / 2;
+                animate background { duration: 80ms; }
+                Text {
+                    text: "Drop";
+                    font-size: Theme.font-size-xsmall;
+                    color: drop-touch.has-hover ? Theme.accent : Theme.foreground-muted;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+
+                drop-touch := TouchArea {
+                    clicked => {
+                        GameState.drop-gold(amount-edit.text);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Labeled experience progress bar — reusable for both Level and Ability.
+component ExpProgressBar inherits Rectangle {
+    in property <string> label;
+    in property <int> current;
+    in property <int> remaining;
+    in property <color> bar-color: Theme.accent;
+
+    // fill = current / (current + remaining), clamped 0..1
+    property <float> fill: (root.current + root.remaining) > 0
+        ? Math.clamp(root.current * 1.0 / (root.current + root.remaining), 0.0, 1.0)
+        : 0.0;
+
+    height: 40px;
+    background: Theme.surface-muted;
+    border-radius: Theme.radius-small;
+    border-width: 1px;
+    border-color: Theme.border-muted;
+
+    VerticalLayout {
+        padding-top: 4px;
+        padding-bottom: 4px;
+        padding-left: Theme.spacing-small;
+        padding-right: Theme.spacing-small;
+        spacing: 4px;
+
+        // Label row: "Level 45" on left, "12,345 to next" on right
+        HorizontalLayout {
+            height: 14px;
+            Text {
+                text: root.label;
+                color: Theme.foreground-strong;
+                font-size: Theme.font-size-small;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+
+            Rectangle { }
+
+            Text {
+                text: root.remaining + " to next";
+                color: Theme.foreground-muted;
+                font-size: Theme.font-size-xsmall;
+                vertical-alignment: center;
+                horizontal-alignment: right;
+            }
+        }
+
+        // Bar track
+        bar-track := Rectangle {
+            height: 8px;
+            border-radius: 4px;
+            background: Theme.surface-card;
+            border-width: 1px;
+            border-color: Theme.border-muted;
+
+            // Filled portion
+            Rectangle {
+                x: 0px;
+                y: 0px;
+                height: parent.height;
+                width: Math.clamp(parent.width * root.fill, 0px, parent.width);
+                border-radius: 4px;
+                background: @linear-gradient(90deg, root.bar-color 0%, root.bar-color 100%);
+                animate width { duration: 300ms; easing: ease-out; }
+            }
+        }
+    }
+}
+
 // Stats tab content — primary stats with raise arrows + vitals.
 component StatsTab inherits VerticalBox {
     spacing: Theme.spacing-small;
@@ -158,6 +320,21 @@ component StatsTab inherits VerticalBox {
             horizontal-alignment: center;
             vertical-alignment: center;
         }
+    }
+
+    // Level & ability progress bars
+    ExpProgressBar {
+        label: "Level " + GameState.player-level;
+        current: GameState.player-exp;
+        remaining: GameState.player-exp-next;
+        bar-color: Theme.accent;
+    }
+
+    ExpProgressBar {
+        label: "Ability " + GameState.player-ab;
+        current: GameState.player-ab-exp;
+        remaining: GameState.player-ab-exp-next;
+        bar-color: #60b0ff;
     }
 
     // Primary stats
@@ -209,7 +386,7 @@ component StatsTab inherits VerticalBox {
         }
     }
 
-    // Vitals + progression
+    // Vitals + misc
     Rectangle {
         background: Theme.surface-muted;
         border-radius: Theme.radius-small;
@@ -231,40 +408,7 @@ component StatsTab inherits VerticalBox {
                 value: GameState.current_mp + " / " + GameState.max_mp;
             }
 
-            InfoRow {
-                label: "Level";
-                value: GameState.player-level;
-            }
-
-            InfoRow {
-                label: "EXP";
-                value: GameState.player-exp;
-            }
-
-            InfoRow {
-                label: "Next Lv";
-                value: GameState.player-exp-next;
-            }
-
-            InfoRow {
-                label: "Ability";
-                value: GameState.player-ab;
-            }
-
-            InfoRow {
-                label: "Ab.EXP";
-                value: GameState.player-ab-exp;
-            }
-
-            InfoRow {
-                label: "Next Ab";
-                value: GameState.player-ab-exp-next;
-            }
-
-            InfoRow {
-                label: "Gold";
-                value: GameState.player-gold;
-            }
+            GoldRow { }
 
             InfoRow {
                 label: "GP";

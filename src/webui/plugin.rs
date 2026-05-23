@@ -228,11 +228,21 @@ struct InteractionResources<'w, 's> {
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
-struct UiStateResources<'w> {
+struct UiStateResources<'w, 's> {
     inv_state: Res<'w, InventoryState>,
     ability_state: Res<'w, AbilityState>,
     world_list_state: ResMut<'w, WorldListState>,
     board_state: ResMut<'w, BoardSessionState>,
+    player_attributes: Res<'w, crate::resources::PlayerAttributes>,
+    local_player_query: bevy::ecs::system::Query<
+        'w,
+        's,
+        (
+            &'static crate::ecs::components::Position,
+            &'static crate::ecs::components::Direction,
+        ),
+        bevy::ecs::query::With<crate::ecs::components::LocalPlayer>,
+    >,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -816,6 +826,29 @@ fn handle_ui_inbound_ingame(
                 };
                 if let Some(s) = stat_enum {
                     outbox.send(&RaiseStatPacket { stat: s });
+                }
+            }
+            UiToCore::DropGold { amount } => {
+                if let Ok((pos, _dir)) = ui_state.local_player_query.single() {
+                    let drop_x = pos.x.round().max(0.0) as u16;
+                    let drop_y = pos.y.round().max(0.0) as u16;
+                    let clamped = (*amount as u32).min(ui_state.player_attributes.gold);
+                    tracing::info!(
+                        "DropGold: requested={}, gold={}, clamped={}, pos=({}, {}), drop=({}, {})",
+                        *amount,
+                        ui_state.player_attributes.gold,
+                        clamped,
+                        pos.x,
+                        pos.y,
+                        drop_x,
+                        drop_y,
+                    );
+                    if clamped > 0 {
+                        outbox.send(&packets::client::GoldDrop {
+                            amount: clamped as i32,
+                            destination_point: (drop_x, drop_y),
+                        });
+                    }
                 }
             }
             UiToCore::ReturnToMainMenu => {

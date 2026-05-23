@@ -298,6 +298,8 @@ export global GameState {
 
     // Called when user clicks a stat raise arrow (sends RaiseStat packet).
     callback spend-stat-point(string);
+    // Called when user clicks the drop gold button in the character panel.
+    callback drop-gold(string);
     in-out property <bool> world-list-loading: false;
     in-out property <[WorldListMemberUi]> world-list-members: [];
     in-out property <int> world-list-count: 0;

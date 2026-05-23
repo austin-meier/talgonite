@@ -4,7 +4,10 @@
       "Bash(cargo build *)",
       "Bash(git checkout *)",
       "Bash(git add *)",
-      "Bash(cargo check *)"
+      "Bash(cargo check *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\mark_\\\\OneDrive\\\\Desktop\\\\Talgonite\\\\talgonite\\\\game-ui\\\\ui\\\\components\" -Recurse -Filter \"*.slint\")",
+      "Bash(Select-Object FullName, Name)",
+      "Bash(Sort-Object FullName)"
     ]
   }
 }

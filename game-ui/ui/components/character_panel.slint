@@ -1,6 +1,6 @@
 import { GameState } from "../game_state.slint";
 import { Theme } from "../theme.slint";
-import { VerticalBox, HorizontalBox, LineEdit } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, LineEdit, ScrollView } from "std-widgets.slint";
 import { BasePanel } from "./base_panel.slint";
 import { SkillList, SpellList } from "./skill_list.slint";
 
@@ -184,46 +184,55 @@ component GoldRow inherits Rectangle {
         }
 
         // Amount input + drop button — only when player has gold
-        if GameState.player-gold > 0: HorizontalLayout {
+        if GameState.player-gold > 0: HorizontalBox {
             height: 24px;
             padding-left: Theme.spacing-small;
             padding-right: Theme.spacing-small;
-            spacing: 4px;
+            spacing: 0px;
 
             Text {
                 text: "Amount";
                 color: Theme.foreground-muted;
                 font-size: Theme.font-size-xsmall;
                 vertical-alignment: center;
-                width: 48px;
+                width: 72px;
             }
 
-            amount-edit := LineEdit {
-                text: "" + GameState.player-gold;
-                font-size: Theme.font-size-xsmall;
-                horizontal-stretch: 1;
-            }
-
-            drop-btn := Rectangle {
-                width: 44px;
+            // Stretches exactly like val-box above; LineEdit + Drop share its width
+            Rectangle {
                 height: 22px;
-                border-radius: Theme.radius-small;
-                border-width: 1px;
-                border-color: drop-touch.has-hover ? Theme.accent : Theme.border-muted;
-                background: drop-touch.pressed ? Theme.accent-subtle : drop-touch.has-hover ? Theme.surface-secondary : Theme.surface-muted;
                 y: (parent.height - self.height) / 2;
-                animate background { duration: 80ms; }
-                Text {
-                    text: "Drop";
-                    font-size: Theme.font-size-xsmall;
-                    color: drop-touch.has-hover ? Theme.accent : Theme.foreground-muted;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                }
 
-                drop-touch := TouchArea {
-                    clicked => {
-                        GameState.drop-gold(amount-edit.text);
+                HorizontalLayout {
+                    spacing: 4px;
+
+                    amount-edit := LineEdit {
+                        text: "" + GameState.player-gold;
+                        font-size: Theme.font-size-xsmall;
+                        horizontal-stretch: 1;
+                        min-width: 40px;
+                    }
+
+                    drop-btn := Rectangle {
+                        width: 40px;
+                        border-radius: Theme.radius-small;
+                        border-width: 1px;
+                        border-color: drop-touch.has-hover ? Theme.accent : Theme.border-muted;
+                        background: drop-touch.pressed ? Theme.accent-subtle : drop-touch.has-hover ? Theme.surface-secondary : Theme.surface-muted;
+                        animate background { duration: 80ms; }
+                        Text {
+                            text: "Drop";
+                            font-size: Theme.font-size-xsmall;
+                            color: drop-touch.has-hover ? Theme.accent : Theme.foreground-muted;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+
+                        drop-touch := TouchArea {
+                            clicked => {
+                                GameState.drop-gold(amount-edit.text);
+                            }
+                        }
                     }
                 }
             }
@@ -304,6 +313,7 @@ component ExpProgressBar inherits Rectangle {
 component StatsTab inherits VerticalBox {
     spacing: Theme.spacing-small;
     padding: Theme.spacing-medium;
+    alignment: start;
 
     // Unspent points banner — only shown when points > 0.
     if GameState.player-stat-points > 0: Rectangle {
@@ -422,8 +432,6 @@ component StatsTab inherits VerticalBox {
         }
     }
 
-    // Spacer so content doesn't stretch
-    Rectangle { }
 }
 
 // The full character panel with three tabs.
@@ -463,8 +471,12 @@ export component CharacterPanel inherits BasePanel {
             }
         }
 
-        // Tab content
-        if root.active-tab == "stats": StatsTab { }
+        // Tab content — subtract scrollbar width so content never underlaps it
+        if root.active-tab == "stats": ScrollView {
+            viewport-width: self.width - 16px;
+            viewport-height: stats-content.preferred-height;
+            stats-content := StatsTab { }
+        }
         if root.active-tab == "skills": SkillList { }
         if root.active-tab == "spells": SpellList { }
     }

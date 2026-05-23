@@ -48,6 +48,8 @@ pub struct GameplaySettings {
     pub current_server_id: Option<u32>,
     #[serde(default = "default_modifier_hotbar_rows_target_custom_only")]
     pub modifier_hotbar_rows_target_custom_only: bool,
+    #[serde(default = "default_true")]
+    pub turn_exchange: bool,
 }
 
 #[derive(Resource, serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -94,6 +96,7 @@ impl Default for Settings {
             gameplay: GameplaySettings {
                 current_server_id: Some(1),
                 modifier_hotbar_rows_target_custom_only: true,
+                turn_exchange: true,
             },
             key_bindings: KeyBindings::default(),
             servers: vec![ServerEntry {
@@ -167,6 +170,7 @@ impl Settings {
             modifier_hotbar_rows_target_custom_only: self
                 .gameplay
                 .modifier_hotbar_rows_target_custom_only,
+            turn_exchange: self.gameplay.turn_exchange,
             key_bindings: (&self.key_bindings).into(),
         }
     }

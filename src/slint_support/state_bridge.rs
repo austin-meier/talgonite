@@ -808,6 +808,7 @@ pub fn apply_core_to_slint(
                 music_volume,
                 scale,
                 modifier_hotbar_rows_target_custom_only,
+                turn_exchange,
                 key_bindings,
             } => {
                 let settings_state =
@@ -828,6 +829,7 @@ pub fn apply_core_to_slint(
                 settings_state.set_modifier_hotbar_rows_target_custom_only(
                     *modifier_hotbar_rows_target_custom_only,
                 );
+                settings_state.set_turn_exchange(*turn_exchange);
 
                 set_keys!(move_up);
                 set_keys!(move_down);

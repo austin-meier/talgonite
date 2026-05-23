@@ -526,6 +526,12 @@ fn handle_ui_inbound_ingame(
             UiToCore::ModifierHotbarRowsTargetCustomOnlyChange { enabled } => {
                 settings.gameplay.modifier_hotbar_rows_target_custom_only = *enabled;
             }
+            UiToCore::TurnExchangeChange { enabled } => {
+                settings.gameplay.turn_exchange = *enabled;
+                outbox.send(&packets::client::OptionToggle {
+                    user_option: packets::client::UserOption::Option1,
+                });
+            }
             UiToCore::RebindKey {
                 action,
                 new_key,
@@ -1521,6 +1527,9 @@ fn handle_ui_inbound_login(
             }
             UiToCore::ModifierHotbarRowsTargetCustomOnlyChange { enabled } => {
                 settings.gameplay.modifier_hotbar_rows_target_custom_only = *enabled;
+            }
+            UiToCore::TurnExchangeChange { enabled } => {
+                settings.gameplay.turn_exchange = *enabled;
             }
             UiToCore::RebindKey {
                 action,
@@ -3450,6 +3459,15 @@ fn handle_login_results(
         commands.insert_resource(hotbar_panel_state);
 
         next_state.set(AppState::InGame);
+
+        // Sync turn exchange with server. Server defaults to ON; send toggle once if player has it OFF.
+        if !settings.gameplay.turn_exchange {
+            let initial_outbox = crate::network::PacketOutbox(outbox_tx.clone());
+            initial_outbox.send(&packets::client::OptionToggle {
+                user_option: packets::client::UserOption::Option1,
+            });
+        }
+
         outbound.write(UiOutbound(CoreToUi::EnteredGame));
     }
 

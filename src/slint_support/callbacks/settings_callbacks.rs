@@ -57,6 +57,13 @@ pub fn wire_settings_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
         });
     }
 
+    {
+        let tx = tx.clone();
+        settings_state.on_turn_exchange_changed(move |enabled| {
+            let _ = tx.send(UiToCore::TurnExchangeChange { enabled });
+        });
+    }
+
     // Start rebind
     {
         let slint_app_weak = slint_app.as_weak();

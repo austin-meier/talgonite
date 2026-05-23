@@ -51,7 +51,9 @@ pub struct MinimapMarker {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MinimapMarkerLayer {
     Player,
-    Creature,
+    OtherPlayer,
+    Monster,
+    Npc,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -70,12 +72,16 @@ pub struct MinimapRenderer {
     pipeline: wgpu::RenderPipeline,
     tile_bind_group: wgpu::BindGroup,
     player_bind_group: wgpu::BindGroup,
-    creature_bind_group: wgpu::BindGroup,
+    other_player_bind_group: wgpu::BindGroup,
+    monster_bind_group: wgpu::BindGroup,
+    npc_bind_group: wgpu::BindGroup,
     tile_vertices: Vec<Vertex>,
     atlas_slices: [Option<MinimapSlice>; 16],
     tile_batch: Option<InstanceBatch>,
     player_markers: SharedInstanceBatch,
-    creature_markers: SharedInstanceBatch,
+    other_player_markers: SharedInstanceBatch,
+    monster_markers: SharedInstanceBatch,
+    npc_markers: SharedInstanceBatch,
     layout: MinimapLayout,
 }
 
@@ -85,24 +91,21 @@ impl MinimapRenderer {
         queue: &wgpu::Queue,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         tile_bytes: &[u8],
-        player_icon_bytes: &[u8],
-        creature_icon_bytes: &[u8],
+        _player_icon_bytes: &[u8],
+        _creature_icon_bytes: &[u8],
         layout: MinimapLayout,
     ) -> anyhow::Result<Self> {
         let (tile_width, tile_height, _) = texture::Texture::load_ktx2(tile_bytes)?;
         let tile_texture =
             texture::Texture::from_ktx2_rgba8(device, queue, "minimap_tiles", tile_bytes)?;
-        let player_texture = texture::Texture::from_ktx2_rgba8(
+        let marker_texture = texture::Texture::from_data(
             device,
             queue,
-            "minimap_player_icon",
-            player_icon_bytes,
-        )?;
-        let creature_texture = texture::Texture::from_ktx2_rgba8(
-            device,
-            queue,
-            "minimap_creature_icon",
-            creature_icon_bytes,
+            "minimap_marker",
+            1,
+            1,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &[255u8, 255, 255, 255],
         )?;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -183,19 +186,21 @@ impl MinimapRenderer {
             multiview_mask: None,
         });
 
-        let alpha_buffer = |label: &str| {
+        let make_tint_buffer = |label: &str, r: f32, g: f32, b: f32| {
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some(label),
-                contents: bytemuck::cast_slice(&[layout.overlay_alpha]),
+                contents: bytemuck::cast_slice(&[r, g, b, layout.overlay_alpha]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             })
         };
 
-        let tile_alpha = alpha_buffer("minimap_tile_alpha");
-        let player_alpha = alpha_buffer("minimap_player_alpha");
-        let creature_alpha = alpha_buffer("minimap_creature_alpha");
+        let tile_tint = make_tint_buffer("minimap_tile_tint", 1.0, 1.0, 1.0);
+        let player_tint = make_tint_buffer("minimap_player_tint", 1.0, 0.9, 0.0);
+        let other_player_tint = make_tint_buffer("minimap_other_player_tint", 0.2, 0.5, 1.0);
+        let monster_tint = make_tint_buffer("minimap_monster_tint", 1.0, 0.25, 0.25);
+        let npc_tint = make_tint_buffer("minimap_npc_tint", 0.1, 0.9, 0.25);
 
-        let make_bind_group = |texture: &texture::Texture, alpha: &wgpu::Buffer, label: &str| {
+        let make_bind_group = |texture: &texture::Texture, tint: &wgpu::Buffer, label: &str| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: &bind_group_layout,
                 entries: &[
@@ -209,7 +214,7 @@ impl MinimapRenderer {
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: alpha.as_entire_binding(),
+                        resource: tint.as_entire_binding(),
                     },
                 ],
                 label: Some(label),
@@ -217,14 +222,18 @@ impl MinimapRenderer {
         };
 
         let tile_bind_group =
-            make_bind_group(&tile_texture, &tile_alpha, "minimap_tile_bind_group");
+            make_bind_group(&tile_texture, &tile_tint, "minimap_tile_bind_group");
         let player_bind_group =
-            make_bind_group(&player_texture, &player_alpha, "minimap_player_bind_group");
-        let creature_bind_group = make_bind_group(
-            &creature_texture,
-            &creature_alpha,
-            "minimap_creature_bind_group",
+            make_bind_group(&marker_texture, &player_tint, "minimap_player_bind_group");
+        let other_player_bind_group = make_bind_group(
+            &marker_texture,
+            &other_player_tint,
+            "minimap_other_player_bind_group",
         );
+        let monster_bind_group =
+            make_bind_group(&marker_texture, &monster_tint, "minimap_monster_bind_group");
+        let npc_bind_group =
+            make_bind_group(&marker_texture, &npc_tint, "minimap_npc_bind_group");
 
         let atlas_slices = atlas_slice_regions(UVec2::new(tile_width, tile_height));
         let tile_vertices = make_quad(TILE_VERTEX_SIZE, TILE_VERTEX_SIZE).to_vec();
@@ -232,19 +241,33 @@ impl MinimapRenderer {
 
         let player_markers =
             SharedInstanceBatch::new(device, marker_vertices.clone(), player_bind_group.clone());
-        let creature_markers =
-            SharedInstanceBatch::new(device, marker_vertices.clone(), creature_bind_group.clone());
+        let other_player_markers = SharedInstanceBatch::new(
+            device,
+            marker_vertices.clone(),
+            other_player_bind_group.clone(),
+        );
+        let monster_markers = SharedInstanceBatch::new(
+            device,
+            marker_vertices.clone(),
+            monster_bind_group.clone(),
+        );
+        let npc_markers =
+            SharedInstanceBatch::new(device, marker_vertices, npc_bind_group.clone());
 
         Ok(Self {
             pipeline,
             tile_bind_group,
             player_bind_group,
-            creature_bind_group,
+            other_player_bind_group,
+            monster_bind_group,
+            npc_bind_group,
             tile_vertices,
             atlas_slices,
             tile_batch: None,
             player_markers,
-            creature_markers,
+            other_player_markers,
+            monster_markers,
+            npc_markers,
             layout,
         })
     }
@@ -281,7 +304,9 @@ impl MinimapRenderer {
 
     pub fn clear_markers(&self) {
         self.player_markers.clear();
-        self.creature_markers.clear();
+        self.other_player_markers.clear();
+        self.monster_markers.clear();
+        self.npc_markers.clear();
     }
 
     pub fn clear(&mut self) {
@@ -304,18 +329,45 @@ impl MinimapRenderer {
         })
     }
 
-    pub fn add_creature_marker(
+    pub fn add_other_player_marker(
         &self,
         queue: &wgpu::Queue,
         marker: MinimapMarker,
     ) -> Option<MinimapMarkerHandle> {
         let index = self
-            .creature_markers
+            .other_player_markers
             .add(queue, self.marker_instance(marker.position))?;
-
         Some(MinimapMarkerHandle {
             index,
-            layer: MinimapMarkerLayer::Creature,
+            layer: MinimapMarkerLayer::OtherPlayer,
+        })
+    }
+
+    pub fn add_monster_marker(
+        &self,
+        queue: &wgpu::Queue,
+        marker: MinimapMarker,
+    ) -> Option<MinimapMarkerHandle> {
+        let index = self
+            .monster_markers
+            .add(queue, self.marker_instance(marker.position))?;
+        Some(MinimapMarkerHandle {
+            index,
+            layer: MinimapMarkerLayer::Monster,
+        })
+    }
+
+    pub fn add_npc_marker(
+        &self,
+        queue: &wgpu::Queue,
+        marker: MinimapMarker,
+    ) -> Option<MinimapMarkerHandle> {
+        let index = self
+            .npc_markers
+            .add(queue, self.marker_instance(marker.position))?;
+        Some(MinimapMarkerHandle {
+            index,
+            layer: MinimapMarkerLayer::Npc,
         })
     }
 
@@ -325,24 +377,27 @@ impl MinimapRenderer {
         handle: MinimapMarkerHandle,
         marker: MinimapMarker,
     ) {
+        let instance = self.marker_instance(marker.position);
         match handle.layer {
-            MinimapMarkerLayer::Player => self.player_markers.update(
-                queue,
-                handle.index,
-                self.marker_instance(marker.position),
-            ),
-            MinimapMarkerLayer::Creature => self.creature_markers.update(
-                queue,
-                handle.index,
-                self.marker_instance(marker.position),
-            ),
+            MinimapMarkerLayer::Player => self.player_markers.update(queue, handle.index, instance),
+            MinimapMarkerLayer::OtherPlayer => {
+                self.other_player_markers.update(queue, handle.index, instance)
+            }
+            MinimapMarkerLayer::Monster => {
+                self.monster_markers.update(queue, handle.index, instance)
+            }
+            MinimapMarkerLayer::Npc => self.npc_markers.update(queue, handle.index, instance),
         }
     }
 
     pub fn remove_marker(&self, queue: &wgpu::Queue, handle: MinimapMarkerHandle) {
         match handle.layer {
             MinimapMarkerLayer::Player => self.player_markers.remove(queue, handle.index),
-            MinimapMarkerLayer::Creature => self.creature_markers.remove(queue, handle.index),
+            MinimapMarkerLayer::OtherPlayer => {
+                self.other_player_markers.remove(queue, handle.index)
+            }
+            MinimapMarkerLayer::Monster => self.monster_markers.remove(queue, handle.index),
+            MinimapMarkerLayer::Npc => self.npc_markers.remove(queue, handle.index),
         }
     }
 
@@ -364,12 +419,15 @@ impl MinimapRenderer {
             );
         }
 
-        render_shared_batch(render_pass, &self.player_markers, &self.player_bind_group);
+        // Draw order: monsters → npcs → other players → local player (on top)
+        render_shared_batch(render_pass, &self.monster_markers, &self.monster_bind_group);
+        render_shared_batch(render_pass, &self.npc_markers, &self.npc_bind_group);
         render_shared_batch(
             render_pass,
-            &self.creature_markers,
-            &self.creature_bind_group,
+            &self.other_player_markers,
+            &self.other_player_bind_group,
         );
+        render_shared_batch(render_pass, &self.player_markers, &self.player_bind_group);
     }
 
     fn tile_instances(&self, tile: MinimapTile) -> Vec<Instance> {

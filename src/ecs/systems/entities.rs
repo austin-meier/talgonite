@@ -226,7 +226,12 @@ fn spawn_display_entities(
                     },
                     InGameScoped,
                     MapScoped,
-                    MinimapMarker::creature(),
+                    match entity_type {
+                        packets::server::VisibleEntityType::Merchant
+                        | packets::server::VisibleEntityType::WhiteSquare
+                        | packets::server::VisibleEntityType::Aisling => MinimapMarker::npc(),
+                        _ => MinimapMarker::monster(),
+                    },
                     Hitbox::screen_space(Vec2::new(-0.45, -1.25), Vec2::new(0.45, 0.65)),
                     HoverName {
                         name: name.clone().unwrap_or_default(),
@@ -286,7 +291,10 @@ fn spawn_display_player(
             UnconfirmedTurns::default(),
         ));
     } else {
-        player_entity.insert(HoverName::new(player.name.clone()));
+        player_entity.insert((
+            HoverName::new(player.name.clone()),
+            MinimapMarker::other_player(),
+        ));
     }
 
     match &player.args {

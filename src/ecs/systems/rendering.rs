@@ -978,7 +978,11 @@ fn upsert_minimap_marker(
     if let Some(existing_handle) = existing_handle {
         let expected_layer = match marker.kind {
             crate::ecs::components::MinimapMarkerKind::Player => MinimapMarkerLayer::Player,
-            crate::ecs::components::MinimapMarkerKind::Creature => MinimapMarkerLayer::Creature,
+            crate::ecs::components::MinimapMarkerKind::OtherPlayer => {
+                MinimapMarkerLayer::OtherPlayer
+            }
+            crate::ecs::components::MinimapMarkerKind::Monster => MinimapMarkerLayer::Monster,
+            crate::ecs::components::MinimapMarkerKind::Npc => MinimapMarkerLayer::Npc,
         };
 
         if existing_handle.layer() == expected_layer && existing_kind == Some(marker.kind) {
@@ -993,8 +997,14 @@ fn upsert_minimap_marker(
         crate::ecs::components::MinimapMarkerKind::Player => {
             renderer.add_player_marker(queue, instance)
         }
-        crate::ecs::components::MinimapMarkerKind::Creature => {
-            renderer.add_creature_marker(queue, instance)
+        crate::ecs::components::MinimapMarkerKind::OtherPlayer => {
+            renderer.add_other_player_marker(queue, instance)
+        }
+        crate::ecs::components::MinimapMarkerKind::Monster => {
+            renderer.add_monster_marker(queue, instance)
+        }
+        crate::ecs::components::MinimapMarkerKind::Npc => {
+            renderer.add_npc_marker(queue, instance)
         }
     };
 

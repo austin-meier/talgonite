@@ -221,7 +221,9 @@ pub struct PlayerSprite {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MinimapMarkerKind {
     Player,
-    Creature,
+    OtherPlayer,
+    Monster,
+    Npc,
 }
 
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
@@ -236,9 +238,21 @@ impl MinimapMarker {
         }
     }
 
-    pub const fn creature() -> Self {
+    pub const fn other_player() -> Self {
         Self {
-            kind: MinimapMarkerKind::Creature,
+            kind: MinimapMarkerKind::OtherPlayer,
+        }
+    }
+
+    pub const fn monster() -> Self {
+        Self {
+            kind: MinimapMarkerKind::Monster,
+        }
+    }
+
+    pub const fn npc() -> Self {
+        Self {
+            kind: MinimapMarkerKind::Npc,
         }
     }
 }

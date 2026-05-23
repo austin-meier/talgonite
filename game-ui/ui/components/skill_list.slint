@@ -1,0 +1,188 @@
+import {
+    GameState,
+    DragDropState,
+    SlotPanelType,
+    Skill,
+    Spell,
+    PopupState,
+} from "../game_state.slint";
+import { Theme } from "../theme.slint";
+import { ScrollView, VerticalBox, HorizontalBox } from "std-widgets.slint";
+import { CancelDrag, DragDropItem } from "drag_drop.slint";
+import { Icon } from "./icon.slint";
+
+// A single skill row — icon, name, cooldown bar, drag/drop support.
+export component SkillListRow inherits Rectangle {
+    in property <Skill> skill;
+    height: 48px;
+    background: Theme.surface-muted;
+    border-radius: Theme.radius-small;
+    border-width: 1px;
+    border-color: Theme.border-muted;
+
+    inner := Rectangle {
+        width: parent.width;
+        height: parent.height;
+        HorizontalBox {
+            padding-left: Theme.spacing-small;
+            padding-right: Theme.spacing-small;
+            spacing: Theme.spacing-small;
+            Icon {
+                icon: skill.icon;
+                cooldown-total: skill.cooldown.total;
+                cooldown-left: skill.cooldown.time_left;
+            }
+
+            Text {
+                text: skill.name;
+                color: Theme.foreground;
+                vertical-alignment: center;
+                font-size: Theme.font-size-small;
+            }
+        }
+
+        states [
+            dragging when drag.pressed: {
+                background: Theme.surface-card;
+                x: drag.offset-x;
+                y: drag.offset-y;
+                border-width: 2px;
+                border-color: Theme.accent;
+            }
+        ]
+    }
+
+    drag := DragDropItem {
+        slot-index: skill.slot;
+        panel-type: SlotPanelType.skill;
+        double-clicked => {
+            GameState.use-action(SlotPanelType.skill, skill.slot);
+        }
+    }
+
+    property <bool> has-tooltip: drag.has-hover && !drag.pressed;
+    changed has-tooltip => {
+        if (root.has-tooltip) {
+            PopupState.show(skill.name, self.absolute-position.x, self.absolute-position.y, root.width, root.height);
+        } else {
+            PopupState.hide();
+        }
+    }
+
+    states [
+        hover when drag.has-hover && !drag.pressed: {
+            border-color: Theme.accent-muted;
+            background: Theme.surface-secondary;
+        }
+    ]
+}
+
+// A single spell row.
+export component SpellListRow inherits Rectangle {
+    in property <Spell> spell;
+    height: 48px;
+    background: Theme.surface-muted;
+    border-radius: Theme.radius-small;
+    border-width: 1px;
+    border-color: Theme.border-muted;
+
+    inner := Rectangle {
+        width: parent.width;
+        height: parent.height;
+        HorizontalBox {
+            padding-left: Theme.spacing-small;
+            padding-right: Theme.spacing-small;
+            spacing: Theme.spacing-small;
+            Icon {
+                icon: spell.icon;
+            }
+
+            Text {
+                text: spell.name;
+                color: Theme.foreground;
+                vertical-alignment: center;
+                font-size: Theme.font-size-small;
+            }
+        }
+
+        states [
+            dragging when drag.pressed: {
+                background: Theme.surface-card;
+                x: drag.offset-x;
+                y: drag.offset-y;
+                border-width: 2px;
+                border-color: Theme.accent;
+            }
+        ]
+    }
+
+    drag := DragDropItem {
+        slot-index: spell.slot;
+        panel-type: SlotPanelType.spell;
+        double-clicked => {
+            GameState.use-action(SlotPanelType.spell, spell.slot);
+        }
+    }
+
+    property <bool> has-tooltip: drag.has-hover && !drag.pressed;
+    changed has-tooltip => {
+        if (root.has-tooltip) {
+            PopupState.show(spell.name, self.absolute-position.x, self.absolute-position.y, root.width, root.height);
+        } else {
+            PopupState.hide();
+        }
+    }
+
+    states [
+        hover when drag.has-hover && !drag.pressed: {
+            border-color: Theme.accent-muted;
+            background: Theme.surface-secondary;
+        }
+    ]
+}
+
+// Scrollable list of all skills. Drop-in composable.
+export component SkillList inherits Rectangle {
+    background: Theme.surface-muted;
+    border-radius: Theme.radius-small;
+    clip: true;
+
+    ScrollView {
+        width: 100%;
+        height: 100%;
+        viewport-width: self.visible-width;
+        CancelDrag { }
+
+        VerticalLayout {
+            padding: 4px;
+            spacing: 4px;
+            alignment: start;
+            for skill in GameState.skills: SkillListRow {
+                skill: skill;
+            }
+        }
+    }
+}
+
+// Scrollable list of all spells. Drop-in composable.
+export component SpellList inherits Rectangle {
+    background: Theme.surface-muted;
+    border-radius: Theme.radius-small;
+    clip: true;
+
+    ScrollView {
+        width: 100%;
+        height: 100%;
+        viewport-width: self.visible-width;
+        CancelDrag { }
+
+        VerticalLayout {
+            padding: 4px;
+            spacing: 4px;
+            alignment: start;
+            for spell in GameState.spells: SpellListRow {
+                spell: spell;
+            }
+        }
+    }
+}

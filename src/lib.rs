@@ -37,10 +37,7 @@ pub mod slint_plugin;
 pub mod slint_support;
 pub mod webui;
 
-pub use minimap_assets::{
-    FULLSCREEN_MINIMAP_ASSETS, MINIMAP_ICON_CREATURE_KTX2, MINIMAP_ICON_PLAYER_KTX2,
-    MINIMAP_TILES_KTX2, MinimapAssets,
-};
+pub use minimap_assets::{FULLSCREEN_MINIMAP_ASSETS, MINIMAP_TILES_KTX2, MinimapAssets};
 
 pub use resources::{
     Camera, CreatureAssetStoreState, CreatureBatchState, EffectManagerState, ItemAssetStoreState,

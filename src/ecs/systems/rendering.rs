@@ -861,27 +861,20 @@ pub fn sync_minimap_to_renderer(
     let topology_dirty = minimap_cache.topology_dirty;
 
     if topology_dirty {
-        let lattice_width = map.width as usize;
-        let lattice_height = map.height as usize;
-        let mut tile_atlas_indices = Vec::with_capacity(lattice_width * lattice_height);
+        let tile_width = map.width as usize;
+        let tile_height = map.height as usize;
+        let full_diamond = atlas_index_for_tile_value(0b1111);
+        let mut tile_atlas_indices = Vec::with_capacity(tile_width * tile_height);
 
-        for lattice_y in 0..lattice_height {
-            for lattice_x in 0..lattice_width {
-                let atlas_index = minimap_lattice_index(
-                    lattice_x,
-                    lattice_y,
-                    map.width,
-                    map.height,
-                    |sample_x, sample_y| {
-                        crate::ecs::collision::can_walk_to(
-                            sample_x,
-                            sample_y,
-                            collision_table.as_deref(),
-                            map_collision.as_deref(),
-                        )
-                    },
+        for tile_y in 0..tile_height {
+            for tile_x in 0..tile_width {
+                let blocked = !crate::ecs::collision::can_walk_to(
+                    tile_x as u8,
+                    tile_y as u8,
+                    collision_table.as_deref(),
+                    map_collision.as_deref(),
                 );
-                tile_atlas_indices.push(atlas_index);
+                tile_atlas_indices.push(if blocked { full_diamond } else { hidden_atlas_index });
             }
         }
 
@@ -967,25 +960,23 @@ fn upsert_minimap_marker(
     layout: minimap::MinimapLayout,
 ) {
     let marker_position =
-        minimap::minimap_marker_position(Vec2::new(position.x, position.y), center, layout);
+        minimap::minimap_tile_position(Vec2::new(position.x, position.y), center, layout);
     let instance = MinimapMarkerInstance {
         position: marker_position,
+    };
+
+    let layer = match marker.kind {
+        crate::ecs::components::MinimapMarkerKind::LocalPlayer => MinimapMarkerLayer::LocalPlayer,
+        crate::ecs::components::MinimapMarkerKind::OtherPlayer => MinimapMarkerLayer::OtherPlayer,
+        crate::ecs::components::MinimapMarkerKind::Npc => MinimapMarkerLayer::Npc,
+        crate::ecs::components::MinimapMarkerKind::Enemy => MinimapMarkerLayer::Enemy,
     };
 
     let existing_handle = marker_state.handles.get(&entity).map(|entry| entry.handle);
     let existing_kind = marker_state.handles.get(&entity).map(|entry| entry.kind);
 
     if let Some(existing_handle) = existing_handle {
-        let expected_layer = match marker.kind {
-            crate::ecs::components::MinimapMarkerKind::Player => MinimapMarkerLayer::Player,
-            crate::ecs::components::MinimapMarkerKind::OtherPlayer => {
-                MinimapMarkerLayer::OtherPlayer
-            }
-            crate::ecs::components::MinimapMarkerKind::Monster => MinimapMarkerLayer::Monster,
-            crate::ecs::components::MinimapMarkerKind::Npc => MinimapMarkerLayer::Npc,
-        };
-
-        if existing_handle.layer() == expected_layer && existing_kind == Some(marker.kind) {
+        if existing_handle.layer() == layer && existing_kind == Some(marker.kind) {
             renderer.update_marker(queue, existing_handle, instance);
             return;
         }
@@ -993,20 +984,7 @@ fn upsert_minimap_marker(
         renderer.remove_marker(queue, existing_handle);
     }
 
-    let handle = match marker.kind {
-        crate::ecs::components::MinimapMarkerKind::Player => {
-            renderer.add_player_marker(queue, instance)
-        }
-        crate::ecs::components::MinimapMarkerKind::OtherPlayer => {
-            renderer.add_other_player_marker(queue, instance)
-        }
-        crate::ecs::components::MinimapMarkerKind::Monster => {
-            renderer.add_monster_marker(queue, instance)
-        }
-        crate::ecs::components::MinimapMarkerKind::Npc => {
-            renderer.add_npc_marker(queue, instance)
-        }
-    };
+    let handle = renderer.add_marker(queue, layer, instance);
 
     if let Some(handle) = handle {
         marker_state.handles.insert(
@@ -1021,27 +999,11 @@ fn upsert_minimap_marker(
     }
 }
 
-fn minimap_lattice_index(
-    lattice_x: usize,
-    lattice_y: usize,
-    map_width: u8,
-    map_height: u8,
-    is_walkable: impl FnMut(u8, u8) -> bool,
-) -> u8 {
-    minimap_lattice_index_from_walkability(lattice_x, lattice_y, map_width, map_height, is_walkable)
-}
-
-// Atlas ordering for the 4-bit minimap mask produced by the corner-based 2x2
-// tile sampler below.
+// Atlas ordering for the 4-bit minimap mask.
 const SIMPLE_TILE_VALUES: [u8; 16] = [
     0b1101, 0b1010, 0b0100, 0b1100, 0b0110, 0b1000, 0b0000, 0b0001, 0b1011, 0b0011, 0b0010, 0b0101,
     0b1111, 0b1110, 0b1001, 0b0111,
 ];
-
-const MINIMAP_MASK_TOP_LEFT: u8 = 0b1000;
-const MINIMAP_MASK_TOP_RIGHT: u8 = 0b0100;
-const MINIMAP_MASK_BOTTOM_LEFT: u8 = 0b0010;
-const MINIMAP_MASK_BOTTOM_RIGHT: u8 = 0b0001;
 
 fn atlas_index_for_tile_value(tile_value: u8) -> u8 {
     SIMPLE_TILE_VALUES
@@ -1061,88 +1023,10 @@ fn minimap_camera_position(camera_position: Vec2, layout: minimap::MinimapLayout
     minimap::minimap_tile_position(Vec2::new(world_x, world_y), Vec2::ZERO, layout)
 }
 
-// Render one minimap tile per world tile, but choose that tile by sampling the
-// corner at (x + 0.5, y + 0.5), which pulls in the surrounding 2x2 world tiles.
-
-fn minimap_lattice_index_from_walkability(
-    lattice_x: usize,
-    lattice_y: usize,
-    map_width: u8,
-    map_height: u8,
-    mut is_walkable: impl FnMut(u8, u8) -> bool,
-) -> u8 {
-    if map_width == 0 || map_height == 0 {
-        return atlas_index_for_tile_value(0);
-    }
-
-    let is_blocked_sample =
-        |sample_x: i32, sample_y: i32, is_walkable: &mut dyn FnMut(u8, u8) -> bool| {
-            !is_walkable(
-                sample_x.min(map_width as i32 - 1).max(0) as u8,
-                sample_y.min(map_height as i32 - 1).max(0) as u8,
-            )
-        };
-
-    let world_x = lattice_x as i32;
-    let world_y = lattice_y as i32;
-
-    let mut dual_mask = 0_u8;
-    if is_blocked_sample(world_x, world_y, &mut is_walkable) {
-        dual_mask |= MINIMAP_MASK_TOP_LEFT;
-    }
-    if is_blocked_sample(world_x + 1, world_y, &mut is_walkable) {
-        dual_mask |= MINIMAP_MASK_TOP_RIGHT;
-    }
-    if is_blocked_sample(world_x, world_y + 1, &mut is_walkable) {
-        dual_mask |= MINIMAP_MASK_BOTTOM_LEFT;
-    }
-    if is_blocked_sample(world_x + 1, world_y + 1, &mut is_walkable) {
-        dual_mask |= MINIMAP_MASK_BOTTOM_RIGHT;
-    }
-
-    atlas_index_for_tile_value(dual_mask)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{SIMPLE_TILE_VALUES, minimap, minimap_lattice_index_from_walkability};
+    use super::{SIMPLE_TILE_VALUES, minimap};
     use glam::Vec2;
-
-    fn minimap_lattice_from_blocked_grid(width: usize, blocked: &[u8]) -> Vec<u8> {
-        let blocked_rows = blocked.chunks_exact(width).collect::<Vec<_>>();
-        let walkable = blocked_rows
-            .iter()
-            .map(|row| row.iter().map(|cell| *cell != 0).collect::<Vec<_>>())
-            .collect::<Vec<_>>();
-        let walkable_rows = walkable.iter().map(Vec::as_slice).collect::<Vec<_>>();
-        let map_height = walkable_rows.len() as u8;
-        let map_width = walkable_rows.first().map_or(0, |row| row.len()) as u8;
-        let lattice_width = width;
-        let lattice_height = walkable_rows.len();
-        let mut indices = Vec::with_capacity(lattice_width * lattice_height);
-
-        for lattice_y in 0..lattice_height {
-            for lattice_x in 0..lattice_width {
-                indices.push(minimap_lattice_index_from_walkability(
-                    lattice_x,
-                    lattice_y,
-                    map_width,
-                    map_height,
-                    |sx, sy| walkable_rows[sy as usize][sx as usize],
-                ));
-            }
-        }
-
-        indices
-    }
-
-    #[test]
-    fn lattice_size_matches_world_tile_count() {
-        let blocked = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let lattice = minimap_lattice_from_blocked_grid(3, &blocked);
-
-        assert_eq!(lattice.len(), 9);
-    }
 
     #[test]
     fn simple_tile_values_cover_every_mask_once() {

@@ -60,7 +60,7 @@ pub fn spawn_entities_system(
                         commands.entity(entity).insert((
                             LocalPlayer,
                             CameraTarget,
-                            MinimapMarker::player(),
+                            MinimapMarker::local_player(),
                             UnconfirmedWalks::default(),
                             UnconfirmedTurns::default(),
                         ));
@@ -227,10 +227,9 @@ fn spawn_display_entities(
                     InGameScoped,
                     MapScoped,
                     match entity_type {
-                        packets::server::VisibleEntityType::Merchant
-                        | packets::server::VisibleEntityType::WhiteSquare
-                        | packets::server::VisibleEntityType::Aisling => MinimapMarker::npc(),
-                        _ => MinimapMarker::monster(),
+                        packets::server::VisibleEntityType::Normal => MinimapMarker::enemy(),
+                        packets::server::VisibleEntityType::Aisling => MinimapMarker::other_player(),
+                        _ => MinimapMarker::npc(),
                     },
                     Hitbox::screen_space(Vec2::new(-0.45, -1.25), Vec2::new(0.45, 0.65)),
                     HoverName {
@@ -286,15 +285,12 @@ fn spawn_display_player(
         player_entity.insert((
             LocalPlayer,
             CameraTarget,
-            MinimapMarker::player(),
+            MinimapMarker::local_player(),
             UnconfirmedWalks::default(),
             UnconfirmedTurns::default(),
         ));
     } else {
-        player_entity.insert((
-            HoverName::new(player.name.clone()),
-            MinimapMarker::other_player(),
-        ));
+        player_entity.insert((HoverName::new(player.name.clone()), MinimapMarker::other_player()));
     }
 
     match &player.args {

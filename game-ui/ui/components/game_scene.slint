@@ -3,6 +3,7 @@ import {
     DragDropState,
     SlotPanelType,
     SocialStatusState,
+    PanelLayoutState,
 } from "../game_state.slint";
 import { MailBoardState } from "../mail_board_state.slint";
 import { InputBridge } from "../input_bridge.slint";
@@ -166,25 +167,95 @@ export component GameScene inherits Rectangle {
     }
 
     if (GameState.show-inventory): InventoryPanel {
-        x: parent.width - 420px;
-        y: 60px;
+        property <length> press-offset-x: 0;
+        property <length> press-offset-y: 0;
+        x: PanelLayoutState.resolve-x(PanelLayoutState.inventory-x, parent.width - 420px);
+        y: PanelLayoutState.resolve-y(PanelLayoutState.inventory-y, 60px);
+        draggable: true;
+        drag-pressed(abs-x, abs-y) => {
+            press-offset-x = abs-x - self.x;
+            press-offset-y = abs-y - self.y;
+        }
+        drag-moved(abs-x, abs-y) => {
+            PanelLayoutState.inventory-x = clamp(abs-x - press-offset-x, 0px, parent.width - self.width);
+            PanelLayoutState.inventory-y = clamp(abs-y - press-offset-y, 0px, parent.height - self.height);
+        }
+        drag-released => {
+            PanelLayoutState.move-request("inventory", PanelLayoutState.inventory-x, PanelLayoutState.inventory-y);
+        }
     }
     if (GameState.show-world-list): WorldListPanel {
-        x: parent.width - 470px;
-        y: 60px;
+        property <length> press-offset-x: 0;
+        property <length> press-offset-y: 0;
+        x: PanelLayoutState.resolve-x(PanelLayoutState.world-list-x, parent.width - 470px);
+        y: PanelLayoutState.resolve-y(PanelLayoutState.world-list-y, 60px);
+        draggable: true;
+        drag-pressed(abs-x, abs-y) => {
+            press-offset-x = abs-x - self.x;
+            press-offset-y = abs-y - self.y;
+        }
+        drag-moved(abs-x, abs-y) => {
+            PanelLayoutState.world-list-x = clamp(abs-x - press-offset-x, 0px, parent.width - self.width);
+            PanelLayoutState.world-list-y = clamp(abs-y - press-offset-y, 0px, parent.height - self.height);
+        }
+        drag-released => {
+            PanelLayoutState.move-request("world_list", PanelLayoutState.world-list-x, PanelLayoutState.world-list-y);
+        }
     }
     if (GameState.show-group): GroupPanel {
-        x: parent.width - 350px;
-        y: 60px;
+        property <length> press-offset-x: 0;
+        property <length> press-offset-y: 0;
+        x: PanelLayoutState.resolve-x(PanelLayoutState.group-x, parent.width - 350px);
+        y: PanelLayoutState.resolve-y(PanelLayoutState.group-y, 60px);
+        draggable: true;
+        drag-pressed(abs-x, abs-y) => {
+            press-offset-x = abs-x - self.x;
+            press-offset-y = abs-y - self.y;
+        }
+        drag-moved(abs-x, abs-y) => {
+            PanelLayoutState.group-x = clamp(abs-x - press-offset-x, 0px, parent.width - self.width);
+            PanelLayoutState.group-y = clamp(abs-y - press-offset-y, 0px, parent.height - self.height);
+        }
+        drag-released => {
+            PanelLayoutState.move-request("group", PanelLayoutState.group-x, PanelLayoutState.group-y);
+        }
     }
     if (GameState.show-skills || GameState.show-spells): ActionsPanel {
-        x: parent.width - 490px;
-        y: 60px;
+        property <length> press-offset-x: 0;
+        property <length> press-offset-y: 0;
+        x: PanelLayoutState.resolve-x(PanelLayoutState.actions-x, parent.width - 490px);
+        y: PanelLayoutState.resolve-y(PanelLayoutState.actions-y, 60px);
         active-tab: actions-tab;
+        draggable: true;
+        drag-pressed(abs-x, abs-y) => {
+            press-offset-x = abs-x - self.x;
+            press-offset-y = abs-y - self.y;
+        }
+        drag-moved(abs-x, abs-y) => {
+            PanelLayoutState.actions-x = clamp(abs-x - press-offset-x, 0px, parent.width - self.width);
+            PanelLayoutState.actions-y = clamp(abs-y - press-offset-y, 0px, parent.height - self.height);
+        }
+        drag-released => {
+            PanelLayoutState.move-request("actions", PanelLayoutState.actions-x, PanelLayoutState.actions-y);
+        }
     }
     if (GameState.show-character): CharacterPanel {
-        x: parent.width - 490px;
-        y: 60px;
+        property <length> press-offset-x: 0;
+        property <length> press-offset-y: 0;
+        x: PanelLayoutState.resolve-x(PanelLayoutState.character-x, parent.width - 490px);
+        y: PanelLayoutState.resolve-y(PanelLayoutState.character-y, 60px);
+        draggable: true;
+        drag-pressed(abs-x, abs-y) => {
+            press-offset-x = abs-x - self.x;
+            press-offset-y = abs-y - self.y;
+        }
+        drag-moved(abs-x, abs-y) => {
+            PanelLayoutState.character-x = clamp(abs-x - press-offset-x, 0px, parent.width - self.width);
+            PanelLayoutState.character-y = clamp(abs-y - press-offset-y, 0px, parent.height - self.height);
+        }
+        drag-released => {
+            PanelLayoutState.move-request("character", PanelLayoutState.character-x, PanelLayoutState.character-y);
+        }
     }
     if (NpcDialogState.data.visible): NpcDialog {
         width: 100%;

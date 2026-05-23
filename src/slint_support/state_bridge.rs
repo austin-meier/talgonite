@@ -8,6 +8,23 @@ use game_types::SlotPanelType;
 use game_ui::{ActionId, LoginError};
 use slint::Model;
 
+/// DarkAges element id → display name. Mirrors Chaos's Element enum.
+fn element_name(id: u8) -> &'static str {
+    match id {
+        0 => "None",
+        1 => "Fire",
+        2 => "Water",
+        3 => "Wind",
+        4 => "Earth",
+        5 => "Holy",
+        6 => "Darkness",
+        7 => "Wood",
+        8 => "Metal",
+        9 => "Undead",
+        _ => "Unknown",
+    }
+}
+
 fn macro_display_name(action_id: &str) -> String {
     let raw = action_id.get(6..).unwrap_or(action_id);
     let mut spaced = String::with_capacity(raw.len() + 4);
@@ -161,6 +178,26 @@ fn parse_color_hex(hex: &str) -> slint::Brush {
 
 #[derive(Resource, Clone)]
 pub struct SlintWindow(pub slint::Weak<crate::MainWindow>);
+
+/// One-shot system: when a CurrentSession appears (i.e. just logged in), push
+/// any saved draggable-panel positions for that character into Slint.
+pub fn push_panel_positions_on_login(
+    win: Res<SlintWindow>,
+    session: Res<crate::CurrentSession>,
+    settings: Res<crate::settings::Settings>,
+) {
+    if !session.is_added() {
+        return;
+    }
+    let Some(strong) = win.0.upgrade() else {
+        return;
+    };
+    let layout = slint::ComponentHandle::global::<crate::PanelLayoutState>(&strong);
+    let positions = settings.get_panel_positions(session.server_id, &session.username);
+    for (panel, (x, y)) in positions {
+        layout.invoke_set_position(slint::SharedString::from(panel.as_str()), x, y);
+    }
+}
 
 #[derive(Resource)]
 pub struct SlintAssetLoaderRes(pub SlintAssetLoader);
@@ -1110,6 +1147,16 @@ pub fn sync_world_labels_to_slint(
     game_state.set_player_ab_exp_next(player_attrs.to_next_ability as i32);
     game_state.set_player_gold(player_attrs.gold as i32);
     game_state.set_player_gp(player_attrs.game_points as i32);
+    game_state.set_player_offense_element(slint::SharedString::from(element_name(
+        player_attrs.offense_element,
+    )));
+    game_state.set_player_defense_element(slint::SharedString::from(element_name(
+        player_attrs.defense_element,
+    )));
+    game_state.set_player_magic_resistance(player_attrs.magic_resistance as i32);
+    game_state.set_player_armor_class(player_attrs.armor_class as i32);
+    game_state.set_player_damage(player_attrs.damage as i32);
+    game_state.set_player_hit(player_attrs.hit as i32);
 
     // Update server name
     game_state.set_server_name(slint::SharedString::from(

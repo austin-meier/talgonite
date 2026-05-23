@@ -248,6 +248,12 @@ pub enum UiToCore {
     DropGold {
         amount: i32,
     },
+    /// User dragged a panel to a new position. Coordinates are in window-space.
+    PanelMoved {
+        panel: String,
+        x: f32,
+        y: f32,
+    },
 }
 
 /// A menu entry that can be a text option or an item with sprite

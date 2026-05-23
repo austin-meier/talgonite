@@ -6,7 +6,7 @@ use slint::ComponentHandle;
 use crate::webui::ipc::{UiToCore, WorldListFilter};
 use crate::{
     ContextMenuState, DragDropState, GameState, MailBoardState, MainWindow, NpcDialogState,
-    SlotPanelType, SocialStatus, SocialStatusState,
+    PanelLayoutState, SlotPanelType, SocialStatus, SocialStatusState,
 };
 
 /// Convert Slint SlotPanelType to game types.
@@ -81,6 +81,19 @@ pub fn wire_game_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
             if tx.send(UiToCore::Unequip { slot: slot as u8 }).is_err() {
                 tracing::error!("Failed to send Unequip message");
             }
+        });
+    }
+
+    // Panel drag — persists new position when the user releases the title bar.
+    {
+        let tx = tx.clone();
+        let panel_layout = slint_app.global::<PanelLayoutState>();
+        panel_layout.on_move_request(move |panel: slint::SharedString, x, y| {
+            let _ = tx.send(UiToCore::PanelMoved {
+                panel: panel.to_string(),
+                x,
+                y,
+            });
         });
     }
 

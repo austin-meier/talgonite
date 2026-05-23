@@ -296,6 +296,14 @@ export global GameState {
     in-out property <int> player-gold: 0;
     in-out property <int> player-gp: 0;
 
+    // Combat secondary stats (from server AttributesSecondary)
+    in-out property <string> player-offense-element: "None";
+    in-out property <string> player-defense-element: "None";
+    in-out property <int> player-magic-resistance: 0;
+    in-out property <int> player-armor-class: 0;
+    in-out property <int> player-damage: 0;
+    in-out property <int> player-hit: 0;
+
     // Called when user clicks a stat raise arrow (sends RaiseStat packet).
     callback spend-stat-point(string);
     // Called when user clicks the drop gold button in the character panel.
@@ -452,4 +460,38 @@ export global SocialStatusState {
 
     // Callback for Rust bridge - called when user changes status
     callback status-changed(SocialStatus);
+}
+
+// Draggable panel positions. Sentinel value -1px means "use default" — a panel
+// that's never been moved or had a saved position loaded.
+export global PanelLayoutState {
+    in-out property <length> character-x: -1px;
+    in-out property <length> character-y: -1px;
+    in-out property <length> inventory-x: -1px;
+    in-out property <length> inventory-y: -1px;
+    in-out property <length> actions-x: -1px;
+    in-out property <length> actions-y: -1px;
+    in-out property <length> world-list-x: -1px;
+    in-out property <length> world-list-y: -1px;
+    in-out property <length> group-x: -1px;
+    in-out property <length> group-y: -1px;
+
+    pure public function resolve-x(stored: length, default-x: length) -> length {
+        return stored < 0px ? default-x : stored;
+    }
+    pure public function resolve-y(stored: length, default-y: length) -> length {
+        return stored < 0px ? default-y : stored;
+    }
+
+    // Fired by Rust to set a panel's position (e.g. after loading saved settings).
+    public function set-position(panel: string, x: length, y: length) {
+        if panel == "character" { character-x = x; character-y = y; }
+        if panel == "inventory" { inventory-x = x; inventory-y = y; }
+        if panel == "actions" { actions-x = x; actions-y = y; }
+        if panel == "world_list" { world-list-x = x; world-list-y = y; }
+        if panel == "group" { group-x = x; group-y = y; }
+    }
+
+    // Fired by panel drag handlers after release; Rust persists the new position.
+    callback move-request(string, length, length);
 }

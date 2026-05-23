@@ -11,7 +11,9 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:github.com)",
       "Bash(Select-Object FullName, Name)",
-      "Bash(Sort-Object FullName)"
+      "Bash(Sort-Object FullName)",
+      "Bash(Find-Item -Path 'C:\\\\Users\\\\austi\\\\Desktop\\\\Talgonite' -Name \"resources.rs\")",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

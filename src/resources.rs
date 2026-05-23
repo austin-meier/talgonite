@@ -29,6 +29,13 @@ pub struct PlayerAttributes {
     pub to_next_ability: u32,
     pub game_points: u32,
     pub gold: u32,
+    // Secondary (combat) attributes
+    pub offense_element: u8,
+    pub defense_element: u8,
+    pub magic_resistance: u8,
+    pub armor_class: i8,
+    pub damage: u8,
+    pub hit: u8,
 }
 
 #[derive(Resource, Clone, Debug)]

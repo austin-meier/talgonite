@@ -432,6 +432,50 @@ component StatsTab inherits VerticalBox {
         }
     }
 
+    // Combat secondary stats
+    Rectangle {
+        background: Theme.surface-muted;
+        border-radius: Theme.radius-small;
+        border-width: 1px;
+        border-color: Theme.border-muted;
+        height: combat-layout.preferred-height + 8px;
+
+        combat-layout := VerticalLayout {
+            padding: 4px;
+            spacing: 0px;
+            y: 4px;
+            InfoRow {
+                label: "Atk El";
+                value: GameState.player-offense-element;
+            }
+
+            InfoRow {
+                label: "Def El";
+                value: GameState.player-defense-element;
+            }
+
+            InfoRow {
+                label: "MR";
+                value: GameState.player-magic-resistance;
+            }
+
+            InfoRow {
+                label: "AC";
+                value: GameState.player-armor-class;
+            }
+
+            InfoRow {
+                label: "Damage";
+                value: GameState.player-damage;
+            }
+
+            InfoRow {
+                label: "Hit";
+                value: GameState.player-hit;
+            }
+        }
+    }
+
 }
 
 // The full character panel with three tabs.

@@ -65,6 +65,10 @@ pub struct Settings {
     pub hotbars: HashMap<String, HotbarData>,
     #[serde(skip)]
     pub macros: HashMap<String, HashMap<String, String>>,
+    /// Per-character draggable panel positions. Outer key is "server_id:username",
+    /// inner key is the panel name (e.g. "character", "inventory").
+    #[serde(skip)]
+    pub panel_positions: HashMap<String, HashMap<String, (f32, f32)>>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -79,6 +83,9 @@ pub struct CharacterProfile {
     pub hotbars: HotbarData,
     #[serde(default)]
     pub macros: HashMap<String, String>,
+    /// Saved positions of draggable panels, keyed by panel name.
+    #[serde(default)]
+    pub panel_positions: HashMap<String, (f32, f32)>,
 }
 
 impl Default for Settings {
@@ -107,6 +114,7 @@ impl Default for Settings {
             saved_credentials: vec![],
             hotbars: HashMap::new(),
             macros: HashMap::new(),
+            panel_positions: HashMap::new(),
         }
     }
 }
@@ -159,6 +167,30 @@ impl Settings {
     pub fn set_hotbar_row_count(&mut self, server_id: u32, username: &str, row_count: i32) {
         let key = format!("{}:{}", server_id, username);
         self.hotbars.entry(key).or_default().row_count = row_count;
+    }
+
+    pub fn get_panel_positions(
+        &self,
+        server_id: u32,
+        username: &str,
+    ) -> HashMap<String, (f32, f32)> {
+        let key = format!("{}:{}", server_id, username);
+        self.panel_positions.get(&key).cloned().unwrap_or_default()
+    }
+
+    pub fn set_panel_position(
+        &mut self,
+        server_id: u32,
+        username: &str,
+        panel: String,
+        x: f32,
+        y: f32,
+    ) {
+        let key = format!("{}:{}", server_id, username);
+        self.panel_positions
+            .entry(key)
+            .or_default()
+            .insert(panel, (x, y));
     }
 
     pub fn to_sync_message(&self) -> CoreToUi {

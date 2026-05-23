@@ -3,7 +3,15 @@ import { Theme } from "../theme.slint";
 export component BasePanel inherits Rectangle {
     in property <string> title;
     in property <bool> show-close: true;
+    // When true, the title bar acts as a drag handle for repositioning.
+    in property <bool> draggable: false;
     callback close();
+    // Drag lifecycle. Coordinates are absolute window-space, so callers can
+    // diff against their starting position to compute the new panel x/y.
+    callback drag-pressed(length, length);
+    callback drag-moved(length, length);
+    callback drag-released();
+
     background: Theme.panel-background;
     border-radius: Theme.radius-medium;
     border-width: 1px;
@@ -14,13 +22,33 @@ export component BasePanel inherits Rectangle {
 
     VerticalLayout {
         padding: 1px;
-        
+
         // Header Row
         Rectangle {
             height: 48px;
             background: Theme.panel-header-background;
             border-top-left-radius: Theme.radius-medium;
             border-top-right-radius: Theme.radius-medium;
+
+            // Drag handle covers the whole header behind the close button.
+            // Children below (close button TouchArea) take precedence on clicks.
+            if root.draggable: drag-touch := TouchArea {
+                mouse-cursor: self.pressed ? grabbing : grab;
+                pointer-event(event) => {
+                    if (event.kind == PointerEventKind.down && event.button == PointerEventButton.left) {
+                        root.drag-pressed(self.mouse-x + self.absolute-position.x, self.mouse-y + self.absolute-position.y);
+                    }
+                    if (event.kind == PointerEventKind.up && event.button == PointerEventButton.left) {
+                        root.drag-released();
+                    }
+                }
+                moved => {
+                    if (self.pressed) {
+                        root.drag-moved(self.mouse-x + self.absolute-position.x, self.mouse-y + self.absolute-position.y);
+                    }
+                }
+            }
+
             HorizontalLayout {
                 padding-left: Theme.spacing-medium;
                 padding-right: Theme.spacing-small;

@@ -885,6 +885,15 @@ fn handle_ui_inbound_ingame(
                     outbox.send(&RaiseStatPacket { stat: s });
                 }
             }
+            UiToCore::PanelMoved { panel, x, y } => {
+                settings.set_panel_position(
+                    session.server_id,
+                    &session.username,
+                    panel.clone(),
+                    *x,
+                    *y,
+                );
+            }
             UiToCore::DropGold { amount } => {
                 if let Ok((pos, _dir)) = ui_state.local_player_query.single() {
                     let drop_x = pos.x.round().max(0.0) as u16;

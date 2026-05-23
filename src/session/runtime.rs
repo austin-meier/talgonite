@@ -279,6 +279,14 @@ fn process_net_packets(
                             player_attrs.game_points = exp_gold.game_points;
                             player_attrs.gold = exp_gold.gold;
                         }
+                        if let Some(secondary) = &attrs.secondary {
+                            player_attrs.offense_element = secondary.offense_element;
+                            player_attrs.defense_element = secondary.defense_element;
+                            player_attrs.magic_resistance = secondary.magic_resistance;
+                            player_attrs.armor_class = secondary.ac;
+                            player_attrs.damage = secondary.dmg;
+                            player_attrs.hit = secondary.hit;
+                        }
                     }
                 }
                 &server::Codes::Equipment => {

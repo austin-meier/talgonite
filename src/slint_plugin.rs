@@ -61,6 +61,10 @@ impl Plugin for SlintBridgePlugin {
                     sync_group_to_slint
                         .run_if(resource_exists::<crate::slint_support::state_bridge::SlintWindow>)
                         .run_if(in_state(AppState::InGame)),
+                    crate::slint_support::state_bridge::push_panel_positions_on_login
+                        .run_if(resource_exists::<crate::slint_support::state_bridge::SlintWindow>)
+                        .run_if(resource_exists::<crate::CurrentSession>)
+                        .run_if(in_state(AppState::InGame)),
                 ),
             )
             .add_systems(

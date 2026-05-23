@@ -293,19 +293,12 @@ impl PreLoginSession {
             });
         }
 
-        let packet = loop {
-            let packet = self
-                .decoder
-                .read()
-                .await
-                .map_err(|_| LoginError::Network("Failed to read redirect packet".to_string()))?;
-
-            if packet[0] == server::Codes::Redirect as u8 {
-                break packet;
-            }
-
-            tracing::warn!("Skipping post-login non-redirect packet: code={} bytes={:02X?}", packet[0], packet);
-        };
+        let packet = self
+            .decoder
+            .read()
+            .await
+            .map_err(|_| LoginError::Network("Failed to read redirect packet".to_string()))?;
+        assert_eq!(packet[0], server::Codes::Redirect as u8);
 
         let redirect = match server::Redirect::try_from_bytes(&packet[1..]) {
             Ok(r) => r,

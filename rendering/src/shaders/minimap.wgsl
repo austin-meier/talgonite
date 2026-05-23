@@ -7,6 +7,7 @@ struct Camera {
 }
 
 struct OverlayParams {
+    color: vec3<f32>,
     alpha: f32,
 }
 
@@ -57,5 +58,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
 
-    return vec4<f32>(color.rgb, color.a * overlay.alpha);
+    return vec4<f32>(color.rgb * overlay.color, color.a * overlay.alpha);
 }

@@ -107,7 +107,6 @@ pub struct MinimapRendererState {
     pub renderer: minimap::MinimapRenderer,
     pub camera: CameraState,
     pub config: MinimapViewConfig,
-    pub assets: crate::minimap_assets::MinimapAssets,
     pub visible: bool,
 }
 
@@ -161,8 +160,6 @@ impl MinimapRendererState {
             &renderer_state.queue,
             camera_bind_group_layout,
             assets.tiles_ktx2,
-            assets.player_icon_ktx2,
-            assets.creature_icon_ktx2,
             config.layout,
         )?;
         let mut camera = CameraState::new(
@@ -176,7 +173,6 @@ impl MinimapRendererState {
             renderer,
             camera,
             config,
-            assets,
             visible: false,
         })
     }

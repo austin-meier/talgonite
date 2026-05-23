@@ -468,29 +468,46 @@ fn handle_ui_inbound_ingame(
                 }
             }
             UiToCore::MenuSubmitText { text } => {
+                tracing::info!(
+                    text = %text,
+                    entity_type = ?menu_ctx.entity_type,
+                    entity_id = menu_ctx.entity_id,
+                    dialog_id = ?menu_ctx.dialog_id,
+                    pursuit_id = ?menu_ctx.pursuit_id,
+                    "MenuSubmitText received"
+                );
+
                 let Some(entity_type) = menu_ctx.entity_type else {
                     tracing::warn!("MenuSubmitText with no entity_type in context");
                     continue;
                 };
 
                 if let Some(dialog_id) = menu_ctx.dialog_id {
-                    // DisplayDialog (opcode 48) text-entry path.
+                    // Chaos protocol: dialog_id is +1 for progression actions (Next, option
+                    // select, text submit). Match the MenuResponse branch above.
+                    let response_dialog_id = dialog_id.wrapping_add(1);
+                    tracing::info!(
+                        original_dialog_id = dialog_id,
+                        response_dialog_id,
+                        pursuit_id = menu_ctx.pursuit_id.unwrap_or(0),
+                        "Sending DialogInteraction TextResponse"
+                    );
                     outbox.send(&packets::client::DialogInteraction {
                         entity_type,
                         entity_id: menu_ctx.entity_id,
                         pursuit_id: menu_ctx.pursuit_id.unwrap_or(0),
-                        dialog_id,
+                        dialog_id: response_dialog_id,
                         args: packets::client::DialogInteractionArgs::TextResponse {
                             args: vec![text.clone()],
                         },
                     });
                 } else if let Some(pursuit_id) = menu_ctx.pursuit_id {
-                    // DisplayMenu (opcode 47) text-entry path.
                     let mut topics = Vec::new();
                     if !menu_ctx.args.is_empty() {
                         topics.push(menu_ctx.args.clone());
                     }
                     topics.push(text.clone());
+                    tracing::info!(pursuit_id, ?topics, "Sending MenuInteraction Topics");
                     outbox.send(&packets::client::MenuInteraction {
                         entity_type,
                         entity_id: menu_ctx.entity_id,

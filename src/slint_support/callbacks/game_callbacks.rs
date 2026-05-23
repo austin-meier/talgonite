@@ -65,9 +65,12 @@ pub fn wire_game_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
     {
         let tx = tx.clone();
         npc_dialog.on_submit_text_request(move |text: slint::SharedString| {
-            let _ = tx.send(UiToCore::MenuSubmitText {
+            tracing::info!(text = %text, "submit-text-request callback fired");
+            if let Err(e) = tx.send(UiToCore::MenuSubmitText {
                 text: text.to_string(),
-            });
+            }) {
+                tracing::error!(?e, "Failed to forward MenuSubmitText to core");
+            }
         });
     }
 

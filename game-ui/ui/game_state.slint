@@ -475,6 +475,8 @@ export global PanelLayoutState {
     in-out property <length> world-list-y: -1px;
     in-out property <length> group-x: -1px;
     in-out property <length> group-y: -1px;
+    in-out property <length> profile-x: -1px;
+    in-out property <length> profile-y: -1px;
 
     pure public function resolve-x(stored: length, default-x: length) -> length {
         return stored < 0px ? default-x : stored;
@@ -490,6 +492,7 @@ export global PanelLayoutState {
         if panel == "actions" { actions-x = x; actions-y = y; }
         if panel == "world_list" { world-list-x = x; world-list-y = y; }
         if panel == "group" { group-x = x; group-y = y; }
+        if panel == "profile" { profile-x = x; profile-y = y; }
     }
 
     // Fired by panel drag handlers after release; Rust persists the new position.

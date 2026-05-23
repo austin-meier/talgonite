@@ -284,10 +284,24 @@ export component GameScene inherits Rectangle {
         screen-height: parent.height;
     }
 
-    // Profile panel (centered modal)
+    // Profile panel (Equipment + Legends)
     if (GameState.profile.visible): ProfilePanel {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
+        property <length> press-offset-x: 0;
+        property <length> press-offset-y: 0;
+        x: PanelLayoutState.resolve-x(PanelLayoutState.profile-x, (parent.width - self.width) / 2);
+        y: PanelLayoutState.resolve-y(PanelLayoutState.profile-y, (parent.height - self.height) / 2);
+        draggable: true;
+        drag-pressed(abs-x, abs-y) => {
+            press-offset-x = abs-x - self.x;
+            press-offset-y = abs-y - self.y;
+        }
+        drag-moved(abs-x, abs-y) => {
+            PanelLayoutState.profile-x = clamp(abs-x - press-offset-x, 0px, parent.width - self.width);
+            PanelLayoutState.profile-y = clamp(abs-y - press-offset-y, 0px, parent.height - self.height);
+        }
+        drag-released => {
+            PanelLayoutState.move-request("profile", PanelLayoutState.profile-x, PanelLayoutState.profile-y);
+        }
     }
 
     // Group invite popup (bottom-center, above hotbar)

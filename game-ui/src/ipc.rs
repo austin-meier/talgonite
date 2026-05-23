@@ -188,6 +188,9 @@ pub enum UiToCore {
     ModifierHotbarRowsTargetCustomOnlyChange {
         enabled: bool,
     },
+    TurnExchangeChange {
+        enabled: bool,
+    },
     RebindKey {
         action: String,
         new_key: String,
@@ -367,6 +370,7 @@ pub enum CoreToUi {
         music_volume: f32,
         scale: f32,
         modifier_hotbar_rows_target_custom_only: bool,
+        turn_exchange: bool,
         key_bindings: KeyBindingsUi,
     },
 }

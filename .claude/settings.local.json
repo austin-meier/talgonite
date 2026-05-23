@@ -9,7 +9,9 @@
       "WebSearch",
       "Bash(gh api *)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(Select-Object FullName, Name)",
+      "Bash(Sort-Object FullName)"
     ]
   }
 }

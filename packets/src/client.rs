@@ -86,7 +86,7 @@ mod notice_request;
 pub use notice_request::NoticeRequest;
 
 mod option_toggle;
-pub use option_toggle::OptionToggle;
+pub use option_toggle::{OptionToggle, UserOption};
 
 mod password_change;
 pub use password_change::PasswordChange;

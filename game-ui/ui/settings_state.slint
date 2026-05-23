@@ -6,6 +6,7 @@ export global SettingsState {
     in-out property <float> music-volume: 1.0;  // 0.0 to 1.0
     in-out property <float> scale: 1.0;  // 1.0 to 5.0
     in-out property <bool> modifier-hotbar-rows-target-custom-only: true;
+    in-out property <bool> turn-exchange: true;
 
     // Key bindings (Primary and Secondary)
     in-out property <string> key-move-up: "ArrowUp";
@@ -154,6 +155,7 @@ export global SettingsState {
     callback music-volume-changed(float);
     callback scale-changed(float);
     callback modifier-hotbar-rows-target-custom-only-changed(bool);
+    callback turn-exchange-changed(bool);
     callback start-rebind(string, int);
     callback rebind-key(string);
     callback unbind-key(string, int);

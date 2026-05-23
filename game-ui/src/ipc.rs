@@ -233,6 +233,10 @@ pub enum UiToCore {
         post_id: i32,
     },
     MailBoardClose,
+    /// User clicked a stat raise arrow in the character panel.
+    RaiseStat {
+        stat: String,
+    },
 }
 
 /// A menu entry that can be a text option or an item with sprite
@@ -390,6 +394,7 @@ pub struct KeyBindingsUi {
     pub move_left: [String; 2],
     pub move_right: [String; 2],
     pub inventory: [String; 2],
+    pub character: [String; 2],
     pub skills: [String; 2],
     pub spells: [String; 2],
     pub settings: [String; 2],
@@ -461,6 +466,7 @@ impl From<&KeyBindings> for KeyBindingsUi {
             move_left: kb.move_left.0.clone(),
             move_right: kb.move_right.0.clone(),
             inventory: kb.inventory.0.clone(),
+            character: kb.character.0.clone(),
             skills: kb.skills.0.clone(),
             spells: kb.spells.0.clone(),
             settings: kb.settings.0.clone(),

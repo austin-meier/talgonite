@@ -260,6 +260,24 @@ fn process_net_packets(
                         if let Some(primary) = &attrs.primary {
                             player_attrs.max_hp = primary.maximum_hp;
                             player_attrs.max_mp = primary.maximum_mp;
+                            player_attrs.str = primary.str;
+                            player_attrs.int = primary.int;
+                            player_attrs.wis = primary.wis;
+                            player_attrs.con = primary.con;
+                            player_attrs.dex = primary.dex;
+                            player_attrs.level = primary.level;
+                            player_attrs.ability = primary.ability;
+                            player_attrs.unspent_points = primary.unspent_points;
+                            player_attrs.max_weight = primary.max_weight;
+                            player_attrs.current_weight = primary.current_weight;
+                        }
+                        if let Some(exp_gold) = &attrs.exp_gold {
+                            player_attrs.total_exp = exp_gold.total_exp;
+                            player_attrs.to_next_level = exp_gold.to_next_level;
+                            player_attrs.total_ability = exp_gold.total_ability;
+                            player_attrs.to_next_ability = exp_gold.to_next_ability;
+                            player_attrs.game_points = exp_gold.game_points;
+                            player_attrs.gold = exp_gold.gold;
                         }
                     }
                 }

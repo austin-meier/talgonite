@@ -834,6 +834,7 @@ pub fn apply_core_to_slint(
                 set_keys!(move_left);
                 set_keys!(move_right);
                 set_keys!(inventory);
+                set_keys!(character);
                 set_keys!(skills);
                 set_keys!(spells);
                 set_keys!(settings);
@@ -1086,11 +1087,27 @@ pub fn sync_world_labels_to_slint(
 
     let game_state = slint::ComponentHandle::global::<crate::GameState>(&strong);
 
-    // Update player attributes (HP/MP)
+    // Update player attributes (HP/MP + full stats)
     game_state.set_current_hp(player_attrs.current_hp as i32);
     game_state.set_max_hp(player_attrs.max_hp as i32);
     game_state.set_current_mp(player_attrs.current_mp as i32);
     game_state.set_max_mp(player_attrs.max_mp as i32);
+    game_state.set_player_str(player_attrs.str as i32);
+    game_state.set_player_int(player_attrs.int as i32);
+    game_state.set_player_wis(player_attrs.wis as i32);
+    game_state.set_player_con(player_attrs.con as i32);
+    game_state.set_player_dex(player_attrs.dex as i32);
+    game_state.set_player_level(player_attrs.level as i32);
+    game_state.set_player_ab(player_attrs.ability as i32);
+    game_state.set_player_stat_points(player_attrs.unspent_points as i32);
+    game_state.set_player_weight(player_attrs.current_weight as i32);
+    game_state.set_player_max_weight(player_attrs.max_weight as i32);
+    game_state.set_player_exp(player_attrs.total_exp as i32);
+    game_state.set_player_exp_next(player_attrs.to_next_level as i32);
+    game_state.set_player_ab_exp(player_attrs.total_ability as i32);
+    game_state.set_player_ab_exp_next(player_attrs.to_next_ability as i32);
+    game_state.set_player_gold(player_attrs.gold as i32);
+    game_state.set_player_gp(player_attrs.game_points as i32);
 
     // Update server name
     game_state.set_server_name(slint::SharedString::from(

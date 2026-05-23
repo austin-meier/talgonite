@@ -274,6 +274,30 @@ export global GameState {
     in-out property <bool> show-skills: false;
     in-out property <bool> show-spells: false;
     in-out property <bool> show-world-list: false;
+    in-out property <bool> show-character: false;
+
+    // Primary stats (from server AttributesPrimary)
+    in-out property <int> player-str: 0;
+    in-out property <int> player-int: 0;
+    in-out property <int> player-wis: 0;
+    in-out property <int> player-con: 0;
+    in-out property <int> player-dex: 0;
+    in-out property <int> player-level: 0;
+    in-out property <int> player-ab: 0;
+    in-out property <int> player-stat-points: 0;
+    in-out property <int> player-weight: 0;
+    in-out property <int> player-max-weight: 0;
+
+    // Exp / gold (from server AttributesExpGold)
+    in-out property <int> player-exp: 0;
+    in-out property <int> player-exp-next: 0;
+    in-out property <int> player-ab-exp: 0;
+    in-out property <int> player-ab-exp-next: 0;
+    in-out property <int> player-gold: 0;
+    in-out property <int> player-gp: 0;
+
+    // Called when user clicks a stat raise arrow (sends RaiseStat packet).
+    callback spend-stat-point(string);
     in-out property <bool> world-list-loading: false;
     in-out property <[WorldListMemberUi]> world-list-members: [];
     in-out property <int> world-list-count: 0;

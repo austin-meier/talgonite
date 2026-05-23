@@ -11,6 +11,24 @@ pub struct PlayerAttributes {
     pub max_hp: u32,
     pub current_mp: u32,
     pub max_mp: u32,
+    // Primary stats
+    pub str: u8,
+    pub int: u8,
+    pub wis: u8,
+    pub con: u8,
+    pub dex: u8,
+    pub level: u8,
+    pub ability: u8,
+    pub unspent_points: u8,
+    pub max_weight: i16,
+    pub current_weight: i16,
+    // Exp / gold
+    pub total_exp: u32,
+    pub to_next_level: u32,
+    pub total_ability: u32,
+    pub to_next_ability: u32,
+    pub game_points: u32,
+    pub gold: u32,
 }
 
 #[derive(Resource, Clone, Debug)]

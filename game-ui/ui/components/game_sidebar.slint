@@ -150,7 +150,44 @@ export component GameSidebar inherits Rectangle {
                         GameState.show-skills = false;
                         GameState.show-spells = false;
                         GameState.show-world-list = false;
+                        GameState.show-character = false;
                         GameState.request-self-profile();
+                    }
+                }
+            }
+        }
+
+        char-btn := Rectangle {
+            width: 48px;
+            height: 48px;
+            background: GameState.show-character ? Theme.accent-subtle : Theme.surface-muted;
+            border-radius: Theme.radius-small;
+            border-width: 1px;
+            border-color: GameState.show-character ? Theme.accent : Theme.border-muted;
+            Image {
+                source: @image-url("../icons/person.svg");
+                width: 28px;
+                height: 28px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                colorize: GameState.show-character ? Theme.accent : Theme.foreground-muted;
+            }
+
+            states [
+                hover when char-btn-touch.has-hover: {
+                    background: Theme.surface-secondary;
+                    border-color: Theme.accent-muted;
+                }
+            ]
+            char-btn-touch := TouchArea {
+                clicked => {
+                    GameState.show-character = !GameState.show-character;
+                    if (GameState.show-character) {
+                        GameState.show-inventory = false;
+                        GameState.show-skills = false;
+                        GameState.show-spells = false;
+                        GameState.show-world-list = false;
+                        GameState.show-group = false;
                     }
                 }
             }

@@ -276,6 +276,14 @@ pub fn wire_game_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
             let _ = tx.send(UiToCore::RequestSelfProfile);
         });
     }
+    {
+        let tx = tx.clone();
+        game_state.on_spend_stat_point(move |stat: slint::SharedString| {
+            let _ = tx.send(UiToCore::RaiseStat {
+                stat: stat.to_string(),
+            });
+        });
+    }
 
     // Drag-drop action
     let dragdrop_state = slint_app.global::<DragDropState>();

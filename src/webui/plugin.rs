@@ -540,6 +540,7 @@ fn handle_ui_inbound_ingame(
                 check_conflict!(move_left);
                 check_conflict!(move_right);
                 check_conflict!(inventory);
+                check_conflict!(character);
                 check_conflict!(skills);
                 check_conflict!(spells);
                 check_conflict!(settings);
@@ -615,6 +616,7 @@ fn handle_ui_inbound_ingame(
                 set_field!(move_left);
                 set_field!(move_right);
                 set_field!(inventory);
+                set_field!(character);
                 set_field!(skills);
                 set_field!(spells);
                 set_field!(settings);
@@ -698,6 +700,7 @@ fn handle_ui_inbound_ingame(
                 clear_field!(move_left);
                 clear_field!(move_right);
                 clear_field!(inventory);
+                clear_field!(character);
                 clear_field!(skills);
                 clear_field!(spells);
                 clear_field!(settings);
@@ -800,6 +803,20 @@ fn handle_ui_inbound_ingame(
             }
             UiToCore::MailBoardClose => {
                 board_state.invalidate();
+            }
+            UiToCore::RaiseStat { stat } => {
+                use packets::client::{RaiseStat as RaiseStatPacket, RaiseStatKind};
+                let stat_enum = match stat.as_str() {
+                    "str" => Some(RaiseStatKind::Str),
+                    "int" => Some(RaiseStatKind::Int),
+                    "wis" => Some(RaiseStatKind::Wis),
+                    "con" => Some(RaiseStatKind::Con),
+                    "dex" => Some(RaiseStatKind::Dex),
+                    _ => None,
+                };
+                if let Some(s) = stat_enum {
+                    outbox.send(&RaiseStatPacket { stat: s });
+                }
             }
             UiToCore::ReturnToMainMenu => {
                 board_state.invalidate();

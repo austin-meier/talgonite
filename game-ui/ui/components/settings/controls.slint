@@ -206,6 +206,21 @@ export component ControlsTab inherits VerticalBox {
         }
 
         KeyBindingRow {
+            action-label: "Character";
+            current-key: SettingsState.key-character;
+            current-key-2: SettingsState.key-character-2;
+            action-id: "character";
+            is-rebinding: SettingsState.rebinding-action == self.action-id;
+            rebinding-index: SettingsState.rebinding-index;
+            start-rebind(idx) => {
+                SettingsState.start-rebind(self.action-id, idx);
+            }
+            unbind-key(idx) => {
+                SettingsState.unbind-key(self.action-id, idx);
+            }
+        }
+
+        KeyBindingRow {
             action-label: "Skills";
             current-key: SettingsState.key-skills;
             current-key-2: SettingsState.key-skills-2;

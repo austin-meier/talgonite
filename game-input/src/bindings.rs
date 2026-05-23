@@ -133,6 +133,7 @@ impl InputBindings {
         bind!(move_left, MoveLeft);
         bind!(move_right, MoveRight);
         bind!(inventory, Inventory);
+        bind!(character, Character);
         bind!(skills, Skills);
         bind!(spells, Spells);
         bind!(settings, Settings);

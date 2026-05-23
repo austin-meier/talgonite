@@ -112,6 +112,7 @@ define_game_actions! {
     MoveLeft { id: "move_left", label: "Move Left", mode: GameActionMode::Continuous, keyboard: Some(KeyCode::ArrowLeft), gamepad: &[GamepadInputType::Button(GamepadButton::DPadLeft), GamepadInputType::LeftStickLeft] },
     MoveRight { id: "move_right", label: "Move Right", mode: GameActionMode::Continuous, keyboard: Some(KeyCode::ArrowRight), gamepad: &[GamepadInputType::Button(GamepadButton::DPadRight), GamepadInputType::LeftStickRight] },
     Inventory { id: "inventory", label: "Inventory", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyI), gamepad: &[GamepadInputType::Button(GamepadButton::North)] },
+    Character { id: "character", label: "Character", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyC), gamepad: &[] },
     Skills { id: "skills", label: "Skills", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyK), gamepad: &[GamepadInputType::Button(GamepadButton::West)] },
     Spells { id: "spells", label: "Spells", mode: GameActionMode::Edge, keyboard: Some(KeyCode::KeyP), gamepad: &[GamepadInputType::Button(GamepadButton::East)] },
     Settings { id: "settings", label: "Settings", mode: GameActionMode::Edge, keyboard: Some(KeyCode::Escape), gamepad: &[GamepadInputType::Button(GamepadButton::Start)] },

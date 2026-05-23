@@ -513,6 +513,14 @@ pub fn input_handling_system(
             game_state.set_show_inventory(!game_state.get_show_inventory());
         }
         if bindings.is_just_pressed(
+            GameAction::Character,
+            &keyboard_input,
+            Some(&gamepad_query),
+            Some(&gamepad_config),
+        ) {
+            game_state.set_show_character(!game_state.get_show_character());
+        }
+        if bindings.is_just_pressed(
             GameAction::Skills,
             &keyboard_input,
             Some(&gamepad_query),

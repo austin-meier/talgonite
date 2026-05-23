@@ -4,7 +4,12 @@
       "Bash(cargo build *)",
       "Bash(git checkout *)",
       "Bash(git add *)",
-      "Bash(cargo check *)"
+      "Bash(cargo check *)",
+      "Bash(xargs grep -l \"dialog\\\\|Dialog\")",
+      "WebSearch",
+      "Bash(gh api *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

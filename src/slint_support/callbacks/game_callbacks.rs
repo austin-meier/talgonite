@@ -65,9 +65,8 @@ pub fn wire_game_callbacks(slint_app: &MainWindow, tx: Sender<UiToCore>) {
     {
         let tx = tx.clone();
         npc_dialog.on_submit_text_request(move |text: slint::SharedString| {
-            let _ = tx.send(UiToCore::MenuSelect {
-                id: 0,
-                name: text.to_string(),
+            let _ = tx.send(UiToCore::MenuSubmitText {
+                text: text.to_string(),
             });
         });
     }

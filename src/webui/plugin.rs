@@ -467,6 +467,40 @@ fn handle_ui_inbound_ingame(
                     tracing::warn!("MenuSelect with no entity_type in context");
                 }
             }
+            UiToCore::MenuSubmitText { text } => {
+                let Some(entity_type) = menu_ctx.entity_type else {
+                    tracing::warn!("MenuSubmitText with no entity_type in context");
+                    continue;
+                };
+
+                if let Some(dialog_id) = menu_ctx.dialog_id {
+                    // DisplayDialog (opcode 48) text-entry path.
+                    outbox.send(&packets::client::DialogInteraction {
+                        entity_type,
+                        entity_id: menu_ctx.entity_id,
+                        pursuit_id: menu_ctx.pursuit_id.unwrap_or(0),
+                        dialog_id,
+                        args: packets::client::DialogInteractionArgs::TextResponse {
+                            args: vec![text.clone()],
+                        },
+                    });
+                } else if let Some(pursuit_id) = menu_ctx.pursuit_id {
+                    // DisplayMenu (opcode 47) text-entry path.
+                    let mut topics = Vec::new();
+                    if !menu_ctx.args.is_empty() {
+                        topics.push(menu_ctx.args.clone());
+                    }
+                    topics.push(text.clone());
+                    outbox.send(&packets::client::MenuInteraction {
+                        entity_type,
+                        entity_id: menu_ctx.entity_id,
+                        pursuit_id,
+                        args: packets::client::MenuInteractionArgs::Topics(topics),
+                    });
+                } else {
+                    tracing::warn!("MenuSubmitText with no dialog_id or pursuit_id in context");
+                }
+            }
             UiToCore::MenuClose => {
                 if let Some(dialog_id) = menu_ctx.dialog_id {
                     if let Some(entity_type) = menu_ctx.entity_type {

@@ -381,8 +381,50 @@ fn process_net_packets(
                         session_events.write(SessionEvent::GroupInvite(q));
                     }
                 }
+                &server::Codes::Effect => {
+                    // Visual sidebar icon; not yet rendered.
+                }
+                &server::Codes::MapChangeComplete => {
+                    // Server signal that map change finished; informational.
+                }
+                &server::Codes::Unknown => {
+                    // Opcode 30 — sent by live DA but undefined in Chaos-Server's
+                    // canonical opcode enum. Appears informational; ignored.
+                }
+                &server::Codes::LoginNotice => {
+                    if let Some(q) = parse_packet::<server::LoginNotice>(data) {
+                        match q {
+                            server::LoginNotice::CheckSum { check_sum } => {
+                                tracing::info!(check_sum, "LoginNotice CheckSum (no ack sent)");
+                            }
+                            server::LoginNotice::FullResponse { data } => {
+                                tracing::info!(len = data.len(), "LoginNotice FullResponse (not yet displayed)");
+                            }
+                        }
+                    }
+                }
+                &server::Codes::ForceClientPacket => {
+                    if let Some(q) = parse_packet::<server::ForceClientPacket>(data) {
+                        tracing::info!(
+                            opcode = q.client_op_code,
+                            len = q.data.len(),
+                            "ForceClientPacket; echoing"
+                        );
+                        outbox.send_raw(q.client_op_code, &q.data);
+                    }
+                }
                 e => {
-                    tracing::warn!(?e, "Unhandled game event");
+                    let hex: String = data
+                        .iter()
+                        .map(|b| format!("{:02x}", b))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    tracing::warn!(
+                        ?e,
+                        len = data.len(),
+                        bytes = %hex,
+                        "Unhandled game event"
+                    );
                 }
             },
         }
@@ -597,6 +639,11 @@ fn handle_map_load_complete(session: &mut NetSessionState, outbox: &crate::netwo
         tracing::info!("Map load complete, requesting metadata checksums");
         session.metadata_requested = true;
         outbox.send(&client::MetaDataRequest::AllCheckSums);
+
+        // Also send a Refresh so the server repushes any pending pursuit/dialog state.
+        // Without this, reconnecting mid-pursuit leaves the server holding the player
+        // (rejecting walks) with no UI prompt on our side.
+        outbox.send(&client::RefreshRequest);
     }
 }
 

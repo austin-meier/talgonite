@@ -85,6 +85,11 @@ pub fn player_movement_system(
                     });
 
                     if let Some(outbox) = &outbox {
+                        tracing::debug!(
+                            from = ?(start_pos.x as u16, start_pos.y as u16),
+                            ?direction,
+                            "Sending ClientWalk"
+                        );
                         outbox.send(&client::ClientWalk {
                             direction: (*direction).into(),
                             step_count: 1,
@@ -567,6 +572,11 @@ pub fn player_reconciliation_system(
     for event in entity_events.read() {
         match event {
             EntityEvent::PlayerLocation(location) => {
+                tracing::info!(
+                    new_pos = ?(location.x, location.y),
+                    old_pos = ?(position.x as u16, position.y as u16),
+                    "Server Location packet"
+                );
                 position.x = location.x as f32;
                 position.y = location.y as f32;
                 unconfirmed.pending.clear();
@@ -617,6 +627,13 @@ pub fn player_reconciliation_system(
                 }
 
                 if let ClientWalkResponseArgs::Rejected = response.args {
+                    tracing::warn!(
+                        server_from = ?response.from,
+                        client_pos = ?(position.x as u16, position.y as u16),
+                        has_tween = active_tween.is_some(),
+                        pending_steps = unconfirmed.pending.len(),
+                        "Walk rejected by server; snapping to server position"
+                    );
                     unconfirmed.recent_deltas.clear();
 
                     // Snap to server's "from" position (state before the rejected step)
@@ -647,6 +664,10 @@ pub fn player_reconciliation_system(
                     }
 
                     if unconfirmed.pending.is_empty() {
+                        if let Some(ref mut active_tween) = active_tween {
+                            active_tween.start = current_pos;
+                            active_tween.end = current_pos;
+                        }
                         commands.entity(entity).remove::<MovementTween>();
                     }
                 }

@@ -169,6 +169,10 @@ pub enum UiToCore {
         /// For shop menus: the item name to send as Topics. Empty for text menus.
         name: String,
     },
+    /// User submitted a string into a text-entry dialog (DisplayDialog TextEntry payload).
+    MenuSubmitText {
+        text: String,
+    },
     /// Close the NPC dialog.
     MenuClose,
     SettingsChange {
